@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>APOC² · Garment Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#0d0f12;--surf:#13161b;--surf2:#191c22;--surf3:#1f232b;
+      --bdr:rgba(255,255,255,0.07);--bdr-h:rgba(255,255,255,0.12);
+      --amber:#e8924a;--amber-d:rgba(232,146,74,0.14);--amber-g:rgba(232,146,74,0.06);--amber-b:rgba(232,146,74,0.28);
+      --green:#3ecf8e;--green-d:rgba(62,207,142,0.12);--green-b:rgba(62,207,142,0.28);
+      --red:#e05c5c;--red-d:rgba(224,92,92,0.12);
+      --blue:#5b9cf6;--blue-d:rgba(91,156,246,0.12);
+      --text:#e8e5e0;--t2:#7a7875;--t3:#3d3c3a;
+      --r:8px;
+    }
+    html{font-size:14px}
+    body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;line-height:1.5;min-height:100vh}
+    body::after{content:'';position:fixed;inset:0;pointer-events:none;z-index:9999;
+      background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");opacity:.5}
+
+    .page{max-width:860px;margin:0 auto;padding:0 24px 80px}
+
+    /* HEADER */
+    header{display:flex;align-items:center;justify-content:space-between;padding:26px 0;border-bottom:1px solid var(--bdr);margin-bottom:28px}
+    .logo-main{display:flex;align-items:baseline;gap:2px}
+    .logo-text{font-size:24px;font-weight:800;letter-spacing:-.04em}
+    .logo-sup{font-size:13px;font-weight:700;color:var(--amber);vertical-align:super;line-height:0}
+    .logo-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--t3);letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
+    .hdr-meta{font-family:'DM Mono',monospace;font-size:10px;text-align:right;line-height:2}
+
+    /* CARDS */
+    .card{background:var(--surf);border:1px solid var(--bdr);border-radius:12px;margin-bottom:14px;overflow:hidden;transition:border-color .2s}
+    .card.active{border-color:var(--amber-b)}
+    .card.done{border-color:var(--green-b)}
+    .card.ebay-card{border-color:rgba(91,156,246,.22)}
+    .card.ebay-card.linked{border-color:var(--green-b)}
+    .card-hd{display:flex;align-items:center;gap:12px;padding:18px 22px;border-bottom:1px solid var(--bdr)}
+    .card-icon{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-family:'DM Mono',monospace;flex-shrink:0;background:var(--surf2);border:1px solid var(--bdr-h);color:var(--t2)}
+    .card.active .card-icon{background:var(--amber-d);border-color:var(--amber-b);color:var(--amber)}
+    .card.done .card-icon{background:var(--green-d);border-color:var(--green-b);color:var(--green)}
+    .card.ebay-card .card-icon{background:var(--blue-d);border-color:rgba(91,156,246,.28);color:var(--blue)}
+    .card.ebay-card.linked .card-icon{background:var(--green-d);border-color:var(--green-b);color:var(--green)}
+    .card-title{font-size:14px;font-weight:700;flex:1}
+    .card-badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);padding:3px 8px;border-radius:4px;background:var(--surf2);border:1px solid var(--bdr)}
+    .card-body{padding:22px}
+
+    /* EBAY */
+    .ebay-connect-row{display:flex;align-items:center;gap:14px;padding:16px 18px;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:16px}
+    .ebay-icon-box{width:42px;height:42px;border-radius:8px;background:var(--blue-d);border:1px solid rgba(91,156,246,.28);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .ebay-info{flex:1}
+    .ebay-info-title{font-size:13px;font-weight:700;margin-bottom:2px}
+    .ebay-info-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2)}
+    .ebay-connect-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:var(--r);background:var(--blue);border:1px solid var(--blue);color:#000;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;white-space:nowrap;text-decoration:none}
+    .ebay-connect-btn:hover{background:#7ab3ff;box-shadow:0 4px 16px rgba(91,156,246,.25);transform:translateY(-1px)}
+    .ebay-complete-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:var(--r);background:var(--surf2);border:1px solid var(--bdr-h);color:var(--t2);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+    .ebay-complete-btn:hover{background:var(--surf3);color:var(--text)}
+    .connected-badge{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--green-d);border:1px solid var(--green-b);border-radius:var(--r);font-family:'DM Mono',monospace;font-size:11px;color:var(--green);margin-bottom:16px}
+    .e-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;box-shadow:0 0 6px currentColor;animation:blink 2.5s infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+    .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+    /* FORM */
+    .lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);margin-bottom:7px;display:block}
+    .f-sel,.f-inp,.f-text{width:100%;background:var(--surf2);border:1px solid var(--bdr-h);border-radius:var(--r);padding:10px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;transition:border-color .15s;-webkit-appearance:none}
+    .f-sel:focus,.f-inp:focus,.f-text:focus{border-color:var(--amber-b)}
+    .f-sel{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%233d3c3a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+    .f-text{resize:vertical;min-height:72px;line-height:1.7}
+    .f-inp.mono{font-family:'DM Mono',monospace;letter-spacing:.1em}
+
+    /* ZIP */
+    .zip-wrap{position:relative;display:flex;align-items:center;gap:8px}
+    .zip-status{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;transition:all .3s}
+
+    /* UPLOAD */
+    .drop-zone{border:1.5px dashed var(--bdr-h);border-radius:var(--r);min-height:170px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;transition:all .2s}
+    .drop-zone:hover,.drop-zone.over{border-color:rgba(232,146,74,.5);background:var(--amber-g)}
+    .drop-zone.filled{border-style:solid;border-color:var(--amber-b);min-height:auto;padding:14px;align-items:flex-start;justify-content:flex-start}
+    .up-ico{width:44px;height:44px;border:1.5px solid var(--bdr-h);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:18px}
+    .up-title{font-size:14px;font-weight:700;margin-bottom:3px;text-align:center}
+    .up-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2);letter-spacing:.04em;text-align:center}
+    .img-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;width:100%}
+    .img-cell{aspect-ratio:3/4;border-radius:6px;border:1px solid var(--bdr);overflow:hidden;position:relative;background:var(--surf2)}
+    .img-cell img{width:100%;height:100%;object-fit:cover;display:block}
+    .img-cell .del{position:absolute;top:5px;right:5px;width:20px;height:20px;background:rgba(0,0,0,.85);border:1px solid rgba(255,255,255,.12);border-radius:50%;color:var(--t2);font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s}
+    .img-cell:hover .del{opacity:1}
+    .img-add{aspect-ratio:3/4;border-radius:6px;border:1.5px dashed var(--bdr-h);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--t3);font-size:16px;transition:all .15s}
+    .img-add:hover{border-color:var(--amber);color:var(--amber)}
+    .act-row{display:flex;gap:10px;margin-top:14px}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 18px;border-radius:var(--r);border:1px solid var(--bdr-h);background:var(--surf2);color:var(--t2);font-family:'Syne',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;white-space:nowrap}
+    .btn:hover{background:var(--surf3);color:var(--text)}
+    .btn.pri{background:var(--amber);border-color:var(--amber);color:#000;flex:1;letter-spacing:.02em}
+    .btn.pri:hover{background:#f0a060;box-shadow:0 4px 18px rgba(232,146,74,.22);transform:translateY(-1px)}
+    .btn.pri:active{transform:none}
+    .btn.pri:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+    .btn.pub{background:var(--green);border-color:var(--green);color:#000;width:100%;padding:13px;font-size:14px;font-weight:800}
+    .btn.pub:hover{background:#4fe09a;box-shadow:0 4px 18px rgba(62,207,142,.2);transform:translateY(-1px)}
+    .btn.pub:disabled{opacity:.4;cursor:not-allowed;transform:none;box-shadow:none}
+
+    /* REPORT */
+    .title-box{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:16px 18px;margin-bottom:12px}
+    .title-area{width:100%;background:transparent;border:none;color:var(--text);font-family:'Syne',sans-serif;font-size:17px;font-weight:700;letter-spacing:-.2px;line-height:1.35;resize:none;outline:none}
+    .title-area:focus{color:var(--amber)}
+    .char-hint{font-family:'DM Mono',monospace;font-size:9px;color:var(--t3);margin-top:6px}
+    .seo-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+    .seo-tag{font-family:'DM Mono',monospace;font-size:9px;padding:3px 7px;border-radius:3px;border:1px solid rgba(232,146,74,.2);background:var(--amber-g);color:var(--amber)}
+
+    .dbox{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:15px 16px}
+    .dval{font-size:13px;font-weight:500;color:var(--text);line-height:1.6}
+    .dval.price{font-size:24px;font-weight:800;color:var(--amber);letter-spacing:-.5px}
+    .dval.grn{color:var(--green);font-family:'DM Mono',monospace;font-size:12px}
+    .dsub{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2);margin-top:5px;line-height:1.7}
+
+    .conf-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--bdr)}
+    .conf-row:last-child{border-bottom:none;padding-bottom:0}
+    .c-name{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2);width:90px;flex-shrink:0}
+    .c-track{flex:1;height:3px;background:var(--surf);border-radius:2px;overflow:hidden}
+    .c-fill{height:100%;border-radius:2px;transition:width .8s ease}
+    .c-fill.hi{background:var(--green)}.c-fill.md{background:var(--amber)}.c-fill.lo{background:var(--red)}
+    .c-pct{font-family:'DM Mono',monospace;font-size:10px;width:30px;text-align:right}
+
+    /* SPECIFICS TABLE — each row is a form field */
+    .specs-wrap{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+    .spec-row{display:grid;grid-template-columns:140px 1fr 140px 1fr;border-bottom:1px solid var(--bdr);align-items:center}
+    .spec-row:last-child{border-bottom:none}
+    .spec-row.full{grid-template-columns:140px 1fr}
+    .spec-k{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--t2);padding:10px 14px;border-right:1px solid var(--bdr)}
+    .spec-k.r2{border-left:1px solid var(--bdr)}
+    .spec-v{padding:6px 10px}
+    .spec-inp{width:100%;background:transparent;border:none;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;font-weight:500;outline:none;padding:4px 4px}
+    .spec-inp:focus{color:var(--amber)}
+    .spec-sel{width:100%;background:transparent;border:none;color:var(--text);font-family:'Syne',sans-serif;font-size:12px;font-weight:500;outline:none;padding:4px 4px;-webkit-appearance:none;cursor:pointer}
+    .spec-sel:focus{color:var(--amber)}
+
+    /* tag strip */
+    .tag-strip{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+    .tag{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:4px 8px;border-radius:4px;border:1px solid var(--bdr);background:var(--surf2);color:var(--t2)}
+    .tag.a{border-color:var(--amber-b);background:var(--amber-d);color:var(--amber)}
+    .tag.g{border-color:var(--green-b);background:var(--green-d);color:var(--green)}
+
+    /* progress */
+    .prog-wrap{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:18px}
+    .prog-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bdr)}
+    .prog-row:last-child{border-bottom:none;padding-bottom:0}
+    .prog-n{font-family:'DM Mono',monospace;font-size:9px;color:var(--t3);width:18px;flex-shrink:0}
+    .prog-name{font-size:13px;font-weight:500;flex:1}
+    .prog-s{font-family:'DM Mono',monospace;font-size:10px}
+    .prog-s.w{color:var(--t3)}.prog-s.r{color:var(--amber)}.prog-s.d{color:var(--green)}
+
+    .sec-div{height:1px;background:var(--bdr);margin:16px 0}
+
+    .pub-res{margin-top:14px;padding:13px 16px;border-radius:var(--r);font-family:'DM Mono',monospace;font-size:12px;display:none;line-height:1.8;white-space:pre-wrap}
+    .pub-res.ok{background:var(--green-d);border:1px solid var(--green-b);color:var(--green);display:block}
+    .pub-res.er{background:var(--red-d);border:1px solid rgba(224,92,92,.22);color:var(--red);display:block}
+
+    .save-note{font-family:'DM Mono',monospace;font-size:9px;color:var(--green);letter-spacing:.06em;opacity:0;transition:opacity .3s}
+    .save-note.show{opacity:1}
+
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spin{display:inline-block;animation:spin .8s linear infinite}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .fade-in{animation:fadeUp .25s ease forwards}
+    *{scrollbar-width:thin;scrollbar-color:var(--surf2) transparent}
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <header>
+    <div>
+      <div class="logo-main"><span class="logo-text">APOC</span><span class="logo-sup">2</span></div>
+      <div class="logo-sub">Tags Technologies · Garment Intelligence Platform</div>
+    </div>
+    <div class="hdr-meta">
+      <div id="hdr-ebay" style="color:var(--t3)">eBay: Not Connected</div>
+      <div id="hdr-zip" style="color:var(--t3)">ZIP: —</div>
+    </div>
+  </header>
+
+  <!-- ── eBay CONNECTION ── -->
+  <div class="card ebay-card" id="ebay-card">
+    <div class="card-hd">
+      <div class="card-icon">⚡</div>
+      <div class="card-title">eBay Marketplace Connection</div>
+      <div class="card-badge">OAuth 2.0</div>
+    </div>
+    <div class="card-body">
+
+      <div id="ebay-nc">
+        <div class="ebay-connect-row">
+          <div class="ebay-icon-box">🛒</div>
+          <div class="ebay-info">
+            <div class="ebay-info-title">Connect your eBay seller account</div>
+            <div class="ebay-info-sub">Loads your policies and enables live publishing</div>
+          </div>
+          <a class="ebay-connect-btn" href="#" onclick="startAuth(event)">Connect eBay Account →</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+          <button class="ebay-complete-btn" onclick="completeAuth()">Complete Authorization</button>
+          <span id="auth-msg" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t2)"></span>
+        </div>
+      </div>
+
+      <div id="ebay-cn" style="display:none">
+        <div class="connected-badge">
+          <div class="e-dot"></div>
+          <span id="ebay-acct">Connected</span>
+        </div>
+      </div>
+
+      <div class="sec-div" style="margin-top:0"></div>
+
+      <!-- POLICIES — 3 cols -->
+      <div class="g3" style="margin-bottom:14px">
+        <div>
+          <label class="lbl">Shipping Policy</label>
+          <select class="f-sel" id="ship-policy" onchange="savePolicies()">
+            <option value="">— Connect eBay first —</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Return Policy</label>
+          <select class="f-sel" id="ret-policy" onchange="savePolicies()">
+            <option value="">— Connect eBay first —</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Payment Policy</label>
+          <select class="f-sel" id="pay-policy" onchange="savePolicies()">
+            <option value="">— Connect eBay first —</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- ZIP + listing defaults -->
+      <div class="g3">
+        <div>
+          <label class="lbl">Origin ZIP Code
+            <span id="zip-status" class="zip-status" style="color:var(--t3);margin-left:8px"></span>
+          </label>
+          <input class="f-inp mono" id="zip-inp" type="text" value="" placeholder="Detecting..." maxlength="10" oninput="saveZip()" />
+        </div>
+        <div>
+          <label class="lbl">Listing Duration</label>
+          <select class="f-sel" id="list-dur" onchange="savePolicies()">
+            <option value="GTC">Good Till Cancelled</option>
+            <option value="30">30 Days</option>
+            <option value="7">7 Days</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl">Dispatch Time</label>
+          <select class="f-sel" id="dispatch" onchange="savePolicies()">
+            <option value="1">1 business day</option>
+            <option value="2">2 business days</option>
+            <option value="3" selected>3 business days</option>
+            <option value="5">5 business days</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px">
+        <span class="save-note" id="save-note">✓ Settings saved</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── STEP 1: CAPTURE ── -->
+  <div class="card active" id="s1">
+    <div class="card-hd">
+      <div class="card-icon">01</div>
+      <div class="card-title">Capture Garment Photos</div>
+      <div class="card-badge">5 images max</div>
+    </div>
+    <div class="card-body">
+      <div class="drop-zone" id="dz" onclick="document.getElementById('fi').click()">
+        <div class="up-ico">↑</div>
+        <div><div class="up-title">Drop photos or click to upload</div>
+        <div class="up-sub">Include tag close-ups for best brand + size accuracy · JPG / PNG</div></div>
+      </div>
+      <input type="file" id="fi" multiple accept="image/*" style="display:none"/>
+      <div class="act-row">
+        <button class="btn" onclick="clearAll()">✕ Clear</button>
+        <button class="btn" id="bg-btn" onclick="removeBg()">Remove Background</button>
+        <button class="btn pri" id="abtn" onclick="doAnalysis()">Analyze Garment →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: REPORT ── -->
+  <div class="card" id="s2">
+    <div class="card-hd">
+      <div class="card-icon">02</div>
+      <div class="card-title">Intelligence Report</div>
+      <div class="card-badge">Claude Sonnet 4.6</div>
+    </div>
+    <div class="card-body" id="s2body">
+      <div style="text-align:center;padding:20px 0;font-family:'DM Mono',monospace;font-size:11px;color:var(--t3)">Upload photos then run analysis</div>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: PUBLISH ── -->
+  <div class="card" id="s3">
+    <div class="card-hd">
+      <div class="card-icon">03</div>
+      <div class="card-title">Review &amp; Publish to eBay</div>
+    </div>
+    <div class="card-body">
+      <div id="pub-preview" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--t2);line-height:1.8">
+        Complete analysis above to see listing preview.
+      </div>
+      <button class="btn pub" id="pbtn" onclick="publish()">Publish Listing to eBay →</button>
+      <div class="pub-res" id="pres"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   PERSIST — policies + zip survive page refresh
+═══════════════════════════════════════════════════════════ */
+function savePolicies() {
+  localStorage.setItem('apoc2_policies', JSON.stringify({
+    ship: document.getElementById('ship-policy').value,
+    ret:  document.getElementById('ret-policy').value,
+    pay:  document.getElementById('pay-policy').value,
+    dur:  document.getElementById('list-dur').value,
+    disp: document.getElementById('dispatch').value,
+  }));
+  flashSave();
+}
+function saveZip() {
+  localStorage.setItem('apoc2_zip', document.getElementById('zip-inp').value);
+}
+function flashSave() {
+  const n = document.getElementById('save-note');
+  n.classList.add('show');
+  clearTimeout(n._t);
+  n._t = setTimeout(() => n.classList.remove('show'), 2000);
+}
+function loadSaved() {
+  const p = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
+  if (p.ship) document.getElementById('ship-policy').value = p.ship;
+  if (p.ret)  document.getElementById('ret-policy').value  = p.ret;
+  if (p.pay)  document.getElementById('pay-policy').value  = p.pay;
+  if (p.dur)  document.getElementById('list-dur').value    = p.dur;
+  if (p.disp) document.getElementById('dispatch').value    = p.disp;
+  const z = localStorage.getItem('apoc2_zip');
+  if (z) { document.getElementById('zip-inp').value = z; setZipStatus(z, 'saved'); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ZIP — GPS first, IP fallback
+═══════════════════════════════════════════════════════════ */
+function setZipStatus(zip, src) {
+  const el = document.getElementById('zip-status');
+  const hdr = document.getElementById('hdr-zip');
+  if (src === 'gps')   { el.textContent = '✓ GPS'; el.style.color = 'var(--green)'; }
+  if (src === 'ip')    { el.textContent = '✓ IP'; el.style.color = 'var(--amber)'; }
+  if (src === 'saved') { el.textContent = '↺ Saved'; el.style.color = 'var(--t2)'; }
+  hdr.textContent = 'ZIP: ' + zip;
+  hdr.style.color = src === 'gps' ? 'var(--green)' : 'var(--t2)';
+  setTimeout(() => { if (src !== 'saved') el.textContent = ''; }, 5000);
+}
+
+async function zipFromIP() {
+  try {
+    const r = await fetch('https://ipinfo.io/json');
+    const d = await r.json();
+    return d.postal || null;
+  } catch { return null; }
+}
+
+async function zipFromCoords(lat, lon) {
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+    const d = await r.json();
+    return d.address?.postcode?.split('-')[0] || null;
+  } catch { return null; }
+}
+
+function detectZip() {
+  const saved = localStorage.getItem('apoc2_zip');
+  if (saved) { loadSaved(); return; }
+
+  const inp = document.getElementById('zip-inp');
+  inp.placeholder = 'Detecting via GPS...';
+
+  if (!navigator.geolocation) { fallbackIP(); return; }
+
+  navigator.geolocation.getCurrentPosition(
+    async pos => {
+      const zip = await zipFromCoords(pos.coords.latitude, pos.coords.longitude);
+      if (zip) {
+        inp.value = zip;
+        localStorage.setItem('apoc2_zip', zip);
+        setZipStatus(zip, 'gps');
+      } else { fallbackIP(); }
+    },
+    async () => { fallbackIP(); },
+    { timeout: 6000, maximumAge: 600000 }
+  );
+}
+
+async function fallbackIP() {
+  const zip = await zipFromIP();
+  const inp = document.getElementById('zip-inp');
+  if (zip) {
+    inp.value = zip;
+    localStorage.setItem('apoc2_zip', zip);
+    setZipStatus(zip, 'ip');
+  } else {
+    inp.placeholder = 'Enter ZIP manually';
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   eBay AUTH
+═══════════════════════════════════════════════════════════ */
+let ebayConnected = false;
+function startAuth(e) {
+  e.preventDefault();
+  document.getElementById('auth-msg').textContent = 'Authorize on eBay then click Complete';
+  // production: window.open(AUTH_URL, '_blank')
+}
+function completeAuth() {
+  document.getElementById('auth-msg').textContent = '';
+  document.getElementById('ebay-nc').style.display = 'none';
+  document.getElementById('ebay-cn').style.display = 'block';
+  document.getElementById('ebay-acct').textContent = '✓ ghostsofnewyork · 3 shipping · 2 return · 1 payment policies loaded';
+  document.getElementById('hdr-ebay').textContent = 'eBay: Connected';
+  document.getElementById('hdr-ebay').style.color = 'var(--green)';
+  document.getElementById('ebay-card').className = 'card ebay-card linked';
+
+  // Populate policy dropdowns with demo data, preserve saved
+  const policies = {
+    ship: ['USPS Priority Mail (3–5 days)', 'FedEx Ground (5–7 days)', 'Calculated at checkout'],
+    ret:  ['30-day returns accepted', 'No returns', '60-day returns accepted'],
+    pay:  ['Immediate payment required', 'PayPal standard'],
+  };
+  function fill(id, opts) {
+    const sel = document.getElementById(id);
+    const prev = sel.value;
+    sel.innerHTML = opts.map((o,i) => `<option value="p${i+1}">${o}</option>`).join('');
+    const saved = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
+    const key = id.replace('-policy','').replace('ship','ship').replace('ret','ret').replace('pay','pay');
+    if (saved[key]) sel.value = saved[key];
+  }
+  fill('ship-policy', policies.ship);
+  fill('ret-policy',  policies.ret);
+  fill('pay-policy',  policies.pay);
+  ebayConnected = true;
+  savePolicies();
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FILES
+═══════════════════════════════════════════════════════════ */
+let files = [], analysisData = null;
+document.getElementById('fi').addEventListener('change', e => addFiles(e.target.files));
+const dz = document.getElementById('dz');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); addFiles(e.dataTransfer.files); });
+function addFiles(f) { Array.from(f).forEach(x => { if (files.length < 5) files.push(x); }); renderDZ(); }
+function renderDZ() {
+  if (!files.length) {
+    dz.className = 'drop-zone';
+    dz.innerHTML = `<div class="up-ico">↑</div><div><div class="up-title">Drop photos or click to upload</div><div class="up-sub">Include tag close-ups for best brand + size accuracy · JPG / PNG</div></div>`;
+    dz.onclick = () => document.getElementById('fi').click();
+  } else {
+    dz.className = 'drop-zone filled';
+    let h = '<div class="img-grid">';
+    files.forEach((f,i) => { const u=URL.createObjectURL(f); h+=`<div class="img-cell"><img src="${u}"/><button class="del" onclick="event.stopPropagation();delF(${i})">✕</button></div>`; });
+    if (files.length<5) h+=`<div class="img-add" onclick="event.stopPropagation();document.getElementById('fi').click()">+</div>`;
+    h+='</div>';
+    dz.innerHTML=h; dz.onclick=null;
+  }
+}
+function delF(i){files.splice(i,1);renderDZ();}
+function clearAll(){files=[];renderDZ();}
+function removeBg(){
+  const b=document.getElementById('bg-btn');
+  b.innerHTML='<span class="spin">◌</span> Processing...';b.disabled=true;
+  setTimeout(()=>{b.innerHTML='✓ Background Removed';b.disabled=false;b.style.color='var(--green)';b.style.borderColor='var(--green-b)';},2200);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SEO TITLE BUILDER
+   Priority order: Brand · Gender · Type · Material · Size · Color · Key features · Origin
+═══════════════════════════════════════════════════════════ */
+function buildSeoTitle(d) {
+  // Ranked keyword tokens — only include if they add search value
+  const parts = [];
+
+  // 1. Brand (always first — highest search weight)
+  if (d.brand) parts.push(d.brand);
+
+  // 2. Sub-brand / line (e.g. "Storm System") — high brand search value
+  if (d.sub_brand && d.sub_brand !== 'null') parts.push(d.sub_brand);
+
+  // 3. Material — luxury buyers search by material
+  if (d.material && !parts.join(' ').toLowerCase().includes(d.material.toLowerCase()))
+    parts.push(d.material);
+
+  // 4. Garment type (leaf category)
+  const type = d.cat ? d.cat.split('>').pop().trim() : '';
+  if (type) parts.push(type);
+
+  // 5. Gender department
+  if (d.gender && d.gender !== 'Unisex') parts.push(d.gender + "'s");
+
+  // 6. Dominant style detail
+  if (d.style && d.style[0]) parts.push(d.style[0]);
+
+  // 7. Size
+  if (d.size) parts.push('Size ' + d.size);
+
+  // 8. Color
+  if (d.color) parts.push(d.color);
+
+  // 9. Country of origin (valuable for luxury)
+  if (d.origin && d.origin !== 'null') parts.push(d.origin);
+
+  // 10. NWT signal
+  if (d.nwt) parts.push('NWT');
+
+  // Vintage era
+  if (d.vintage && d.era && d.era !== 'null') parts.push(d.era);
+
+  // Join and trim to 80 chars, never cutting mid-word
+  let title = parts.join(' ');
+  if (title.length > 80) {
+    title = title.substring(0, 80);
+    title = title.substring(0, title.lastIndexOf(' '));
+  }
+  return title;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ANALYSIS (demo with rich mock data)
+═══════════════════════════════════════════════════════════ */
+const ASTEPS = [
+  ['OCR · Tag Reading',      'Tag text extracted'],
+  ['Brand Identification',   'Loro Piana confirmed'],
+  ['Garment Classification', "Outerwear · Men's L"],
+  ['eBay Price Research',    '$485 · 14 sold comps'],
+  ['Listing Generation',     'SEO title + specifics ready'],
+];
+
+function doAnalysis() {
+  if (!files.length) { dz.style.borderColor='var(--red)'; setTimeout(()=>dz.style.borderColor='',1200); return; }
+  const btn = document.getElementById('abtn');
+  btn.disabled=true; btn.innerHTML='<span class="spin">◌</span> Analyzing...';
+  document.getElementById('s2').className='card active';
+  let ph='<div class="prog-wrap">';
+  ASTEPS.forEach(([n],i)=>{ ph+=`<div class="prog-row"><div class="prog-n">0${i+1}</div><div class="prog-name">${n}</div><div class="prog-s w" id="p${i}">— Waiting</div></div>`; });
+  ph+='</div>';
+  document.getElementById('s2body').innerHTML=ph;
+  ASTEPS.forEach(([,done],i)=>{
+    setTimeout(()=>{ const e=document.getElementById(`p${i}`); if(e){e.textContent='...';e.className='prog-s r';} }, 900+i*1000);
+    setTimeout(()=>{ const e=document.getElementById(`p${i}`); if(e){e.textContent='✓ '+done;e.className='prog-s d';} }, 1500+i*1000);
+  });
+  setTimeout(()=>{
+    btn.disabled=false; btn.innerHTML='↺ Re-analyze';
+    document.getElementById('s2').className='card done';
+    document.getElementById('s3').className='card active';
+    buildReport();
+  }, 7000);
+}
+
+function buildReport() {
+  // This would come from the Claude API response in production
+  const raw = {
+    brand:'Loro Piana', sub_brand:'Storm System®',
+    cat:'Men > Jackets > Outerwear', cat_id:'57988',
+    gender:'Men', dept:'Men',
+    size:'L', size_type:'Regular',
+    color:'Taupe', color_std:'Brown',
+    material:'Cashmere', material_full:'100% Cashmere',
+    sleeve:'Long Sleeve', neckline:'Mock Neck',
+    style:['Full Zip','Windproof','Water-Resistant','Travel'],
+    origin:'Italy',
+    nwt:false, vintage:false, era:'Contemporary',
+    cond_score:4, cond_label:'Good',
+    cond_note:'Light wear on cuffs and collar edge. No holes, tears, or stains. All zippers operational. Lining intact.',
+    defects:[],
+    desc:"A remarkably lightweight Storm System® cashmere jacket from Loro Piana, Italy's premier luxury house. The proprietary Storm System® treatment renders this cashmere fully windproof and water-resistant while remaining breathable. Exceptional for travel or layering.",
+    price_low:420, price_high:560, price_rec:485, sold_avg:497, comps:14, msrp:2850,
+    conf_brand:94, conf_cat:91, conf_gender:97, conf_size:78,
+  };
+
+  // Build SEO title from raw data
+  const title = buildSeoTitle(raw);
+  const keywords = [raw.brand, raw.sub_brand, raw.material_full, raw.color, raw.origin, raw.gender+"'s", raw.size, ...(raw.style||[])].filter(Boolean);
+
+  analysisData = { ...raw, title, keywords };
+
+  const d = analysisData;
+  const chars = title.length;
+
+  document.getElementById('s2body').innerHTML = `<div class="fade-in">
+
+    <!-- TITLE -->
+    <div class="title-box">
+      <label class="lbl">eBay Listing Title <span style="color:var(--amber);font-size:8px">SEO OPTIMIZED</span></label>
+      <textarea class="title-area" id="ttl" rows="2" oninput="upChars(this)">${title}</textarea>
+      <div class="char-hint">
+        <span id="cc" style="color:${chars>70?'var(--amber)':'var(--green)'}">${chars}</span> / 80 chars
+        &nbsp;·&nbsp; Ranked: Brand → Sub-brand → Material → Type → Gender → Style → Size → Color → Origin
+      </div>
+      <div class="seo-tags" style="margin-top:8px">
+        ${keywords.map(k=>`<span class="seo-tag">${k}</span>`).join('')}
+      </div>
+    </div>
+
+    <!-- PRICE + CONFIDENCE -->
+    <div class="g2" style="margin-bottom:12px">
+      <div class="dbox">
+        <div class="lbl">Recommended List Price</div>
+        <div class="dval price">$${d.price_rec}</div>
+        <div class="dsub">
+          Range $${d.price_low} – $${d.price_high}<br>
+          ${d.comps} eBay sold comps · Avg sold $${d.sold_avg}<br>
+          ${Math.round(d.price_rec/d.msrp*100)}% of $${d.msrp.toLocaleString()} MSRP
+        </div>
+      </div>
+      <div class="dbox">
+        <div class="lbl">Model Confidence</div>
+        ${[['Brand',d.conf_brand],['Category',d.conf_cat],['Gender',d.conf_gender],['Size',d.conf_size]].map(([n,v])=>`
+        <div class="conf-row">
+          <div class="c-name">${n}</div>
+          <div class="c-track"><div class="c-fill ${v>=85?'hi':'md'}" style="width:${v}%"></div></div>
+          <div class="c-pct" style="color:${v>=85?'var(--green)':'var(--amber)'}">${v}%</div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- CONDITION -->
+    <div class="dbox" style="margin-bottom:12px">
+      <div class="lbl">Condition Report</div>
+      <div class="dval grn" style="margin-bottom:6px">${d.cond_score}/5 — ${d.cond_label}
+        <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--t2);margin-left:8px">eBay: ${['','New','Like New','Excellent','Good','Fair'][d.cond_score]}</span>
+      </div>
+      <div style="font-size:12px;color:var(--t2);line-height:1.65">${d.cond_note}</div>
+      ${d.defects.length ? `<div class="dsub" style="color:var(--red);margin-top:6px">⚠ Defects: ${d.defects.join(', ')}</div>` : `<div class="dsub" style="color:var(--green);margin-top:6px">✓ No defects detected</div>`}
+    </div>
+
+    <!-- ITEM SPECIFICS — all keyword-populated, all editable -->
+    <div class="lbl" style="margin-bottom:8px">Item Specifics
+      <span style="color:var(--t3);font-size:8px;letter-spacing:.04em"> · Auto-populated from analysis · All fields editable</span>
+    </div>
+    <div class="specs-wrap" style="margin-bottom:12px">
+
+      <div class="spec-row">
+        <div class="spec-k">Brand</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-brand" value="${d.brand}${d.sub_brand?' / '+d.sub_brand:''}" /></div>
+        <div class="spec-k r2">Department</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-dept">
+          <option ${d.dept==='Men'?'selected':''}>Men</option>
+          <option ${d.dept==='Women'?'selected':''}>Women</option>
+          <option ${d.dept==='Unisex'?'selected':''}>Unisex</option>
+          <option>Boys</option><option>Girls</option>
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Size</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-size" value="${d.size}" /></div>
+        <div class="spec-k r2">Size Type</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-sizetype">
+          <option ${d.size_type==='Regular'?'selected':''}>Regular</option>
+          <option ${d.size_type==='Plus'?'selected':''}>Plus</option>
+          <option ${d.size_type==='Petite'?'selected':''}>Petite</option>
+          <option ${d.size_type==='Big &amp; Tall'?'selected':''}>Big &amp; Tall</option>
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Color</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-color" value="${d.color}" /></div>
+        <div class="spec-k r2">Color Map</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-colormap">
+          ${['Black','White','Gray','Navy','Blue','Red','Green','Brown','Beige','Cream','Pink','Purple','Multicolor','Yellow','Orange'].map(c=>`<option ${c===d.color_std?'selected':''}>${c}</option>`).join('')}
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Material</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-material" value="${d.material_full}" /></div>
+        <div class="spec-k r2">Material Map</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-materialmap">
+          ${['Cotton','Denim','Wool','Leather','Polyester','Nylon','Silk','Linen','Cashmere','Fleece','Velvet','Corduroy','Tweed','Flannel','Suede','Acrylic','Rayon','Viscose'].map(m=>`<option ${m===d.material?'selected':''}>${m}</option>`).join('')}
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Sleeve Length</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-sleeve">
+          ${['Long Sleeve','Short Sleeve','3/4 Sleeve','Sleeveless','Cap Sleeve'].map(s=>`<option ${s===d.sleeve?'selected':''}>${s}</option>`).join('')}
+        </select></div>
+        <div class="spec-k r2">Neckline</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-neckline">
+          ${['Crew Neck','V-Neck','Round Neck','Scoop Neck','Turtleneck','Mock Neck','Collared','Hooded','Polo','Henley','Boat Neck','Cowl Neck','Square Neck','Off Shoulder','Strapless'].map(n=>`<option ${n===d.neckline?'selected':''}>${n}</option>`).join('')}
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Style</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-style" value="${(d.style||[]).join(', ')}" /></div>
+        <div class="spec-k r2">Garment Type</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-type" value="${d.cat?d.cat.split('>').pop().trim():''}" /></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Country/Region</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-origin" value="${d.origin||''}" /></div>
+        <div class="spec-k r2">Vintage</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-vintage">
+          <option ${!d.vintage?'selected':''}>No</option>
+          <option ${d.vintage?'selected':''}>Yes</option>
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">New w/ Tags</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-nwt">
+          <option ${!d.nwt?'selected':''}>No</option>
+          <option ${d.nwt?'selected':''}>Yes</option>
+        </select></div>
+        <div class="spec-k r2">eBay Category ID</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-catid" value="${d.cat_id}" /></div>
+      </div>
+
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="lbl" style="margin-bottom:7px">Description</div>
+    <textarea class="f-text" id="desc-area" rows="5">${d.desc}</textarea>
+
+  </div>`;
+
+  // Update publish preview
+  document.getElementById('pub-preview').innerHTML = `
+    <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px">${title}</div>
+    <div>Brand: <b>${d.brand}</b> · Size: ${d.size} · Color: ${d.color} · Condition: ${d.cond_label} · Price: <span style="color:var(--amber)">$${d.price_rec}</span></div>
+  `;
+}
+
+function upChars(el) {
+  const n = el.value.length;
+  const s = document.getElementById('cc');
+  s.textContent = n;
+  s.style.color = n>80?'var(--red)':n>70?'var(--amber)':'var(--green)';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PUBLISH
+═══════════════════════════════════════════════════════════ */
+function publish() {
+  if (!analysisData) { alert('Run analysis first.'); return; }
+  const b = document.getElementById('pbtn');
+  b.innerHTML='<span class="spin">◌</span>  Uploading photos & publishing...'; b.disabled=true;
+  setTimeout(()=>{
+    b.innerHTML='✓ Published — List Another'; b.disabled=false;
+    const r = document.getElementById('pres');
+    r.className='pub-res ok';
+    r.innerHTML='✓ Listed successfully\nItem ID: 387291048302\nhttps://www.ebay.com/itm/387291048302';
+  }, 3000);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════════════ */
+loadSaved();
+detectZip();
+</script>
+</body>
+</html>
