@@ -626,63 +626,121 @@ function buildSeoTitle(d) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   ANALYSIS (demo with rich mock data)
+   CONFIG — point at your HuggingFace Space
+═══════════════════════════════════════════════════════════ */
+const API = 'https://tien1868-apoc-app.hf.space';
+
+/* ═══════════════════════════════════════════════════════════
+   ANALYSIS — real API call
 ═══════════════════════════════════════════════════════════ */
 const ASTEPS = [
+  ['Uploading photos',       'Photos received'],
   ['OCR · Tag Reading',      'Tag text extracted'],
-  ['Brand Identification',   'Loro Piana confirmed'],
-  ['Garment Classification', "Outerwear · Men's L"],
-  ['eBay Price Research',    '$485 · 14 sold comps'],
-  ['Listing Generation',     'SEO title + specifics ready'],
+  ['Brand Identification',   'Brand confirmed'],
+  ['Garment Classification', 'Category + size identified'],
+  ['Generating listing',     'Title + specifics ready'],
 ];
 
-function doAnalysis() {
+async function doAnalysis() {
   if (!files.length) { dz.style.borderColor='var(--red)'; setTimeout(()=>dz.style.borderColor='',1200); return; }
   const btn = document.getElementById('abtn');
   btn.disabled=true; btn.innerHTML='<span class="spin">◌</span> Analyzing...';
   document.getElementById('s2').className='card active';
+
+  // Show progress UI
   let ph='<div class="prog-wrap">';
   ASTEPS.forEach(([n],i)=>{ ph+=`<div class="prog-row"><div class="prog-n">0${i+1}</div><div class="prog-name">${n}</div><div class="prog-s w" id="p${i}">— Waiting</div></div>`; });
   ph+='</div>';
   document.getElementById('s2body').innerHTML=ph;
-  ASTEPS.forEach(([,done],i)=>{
-    setTimeout(()=>{ const e=document.getElementById(`p${i}`); if(e){e.textContent='...';e.className='prog-s r';} }, 900+i*1000);
-    setTimeout(()=>{ const e=document.getElementById(`p${i}`); if(e){e.textContent='✓ '+done;e.className='prog-s d';} }, 1500+i*1000);
-  });
-  setTimeout(()=>{
-    btn.disabled=false; btn.innerHTML='↺ Re-analyze';
-    document.getElementById('s2').className='card done';
-    document.getElementById('s3').className='card active';
-    buildReport();
-  }, 7000);
+
+  // Tick first step
+  const tick = (i, msg) => {
+    const e = document.getElementById(`p${i}`);
+    if (e) { e.textContent = msg; e.className = msg.startsWith('✓') ? 'prog-s d' : 'prog-s r'; }
+  };
+  tick(0, '...');
+
+  try {
+    const fd = new FormData();
+    files.forEach(f => fd.append('images', f));
+
+    tick(0, '✓ Photos received');
+    tick(1, '...');
+
+    const resp = await fetch(`${API}/analyze`, { method:'POST', body:fd });
+    tick(1, '✓ Tag text extracted');
+    tick(2, '...');
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || `HTTP ${resp.status}`);
+    }
+
+    const result = await resp.json();
+    if (!result.success) throw new Error(result.error || 'Analysis failed');
+
+    tick(2, '✓ Brand confirmed');
+    tick(3, '✓ Category identified');
+    tick(4, '✓ Listing ready');
+
+    setTimeout(() => {
+      btn.disabled=false; btn.innerHTML='↺ Re-analyze';
+      document.getElementById('s2').className='card done';
+      document.getElementById('s3').className='card active';
+      buildReport(result.data);
+    }, 600);
+
+  } catch(err) {
+    document.getElementById('s2body').innerHTML =
+      `<div style="padding:16px;color:var(--red);font-family:'DM Mono',monospace;font-size:12px">
+        ✗ Analysis failed: ${err.message}<br><br>
+        Make sure your HuggingFace Space is running at:<br>${API}
+      </div>`;
+    btn.disabled=false; btn.innerHTML='↺ Retry';
+    document.getElementById('s2').className='card';
+  }
 }
 
-function buildReport() {
-  // This would come from the Claude API response in production
-  const raw = {
-    brand:'Loro Piana', sub_brand:'Storm System®',
-    cat:'Men > Jackets > Outerwear', cat_id:'57988',
-    gender:'Men', dept:'Men',
-    size:'L', size_type:'Regular',
-    color:'Taupe', color_std:'Brown',
-    material:'Cashmere', material_full:'100% Cashmere',
-    sleeve:'Long Sleeve', neckline:'Mock Neck',
-    style:['Full Zip','Windproof','Water-Resistant','Travel'],
-    origin:'Italy',
-    nwt:false, vintage:false, era:'Contemporary',
-    cond_score:4, cond_label:'Good',
-    cond_note:'Light wear on cuffs and collar edge. No holes, tears, or stains. All zippers operational. Lining intact.',
-    defects:[],
-    desc:"A remarkably lightweight Storm System® cashmere jacket from Loro Piana, Italy's premier luxury house. The proprietary Storm System® treatment renders this cashmere fully windproof and water-resistant while remaining breathable. Exceptional for travel or layering.",
-    price_low:420, price_high:560, price_rec:485, sold_avg:497, comps:14, msrp:2850,
-    conf_brand:94, conf_cat:91, conf_gender:97, conf_size:78,
+function buildReport(raw) {
+  // Map API response fields to UI fields
+  const mapped = {
+    brand:        raw.brand || '',
+    sub_brand:    raw.sub_brand && raw.sub_brand !== 'null' ? raw.sub_brand : null,
+    cat:          raw.category || '',
+    cat_id:       raw.cat_id || '',
+    gender:       raw.gender || 'Unisex',
+    dept:         raw.gender || 'Unisex',
+    size:         raw.size || '',
+    size_type:    raw.size_type || 'Regular',
+    color:        raw.color || '',
+    color_std:    raw.color_std || raw.color || '',
+    material:     raw.material || '',
+    material_full:raw.material || '',
+    sleeve:       raw.sleeve_length || 'Long Sleeve',
+    neckline:     raw.neckline || '',
+    style:        raw.style_details || [],
+    origin:       raw.origin || '',
+    nwt:          raw.tags_present || false,
+    vintage:      raw.vintage || false,
+    era:          raw.vintage_era || 'Contemporary',
+    cond_score:   raw.condition_score || 4,
+    cond_label:   raw.condition_label || 'Good',
+    cond_note:    raw.condition_notes || '',
+    defects:      raw.defects_detected || [],
+    desc:         raw.description || '',
+    price_low:    raw.suggested_price_low || 0,
+    price_high:   raw.suggested_price_high || 0,
+    price_rec:    raw.suggested_price_low || 0,
+    conf_brand:   raw.confidence === 'high' ? 90 : raw.confidence === 'medium' ? 70 : 50,
+    conf_cat:     raw.confidence === 'high' ? 88 : 65,
+    conf_gender:  95,
+    conf_size:    raw.size ? 85 : 60,
   };
 
-  // Build SEO title from raw data
-  const title = buildSeoTitle(raw);
-  const keywords = [raw.brand, raw.sub_brand, raw.material_full, raw.color, raw.origin, raw.gender+"'s", raw.size, ...(raw.style||[])].filter(Boolean);
+  const title = raw.title || buildSeoTitle(mapped);
+  const keywords = [mapped.brand, mapped.sub_brand, mapped.material_full, mapped.color, mapped.origin, mapped.gender+"'s", mapped.size, ...(mapped.style||[])].filter(Boolean);
 
-  analysisData = { ...raw, title, keywords };
+  analysisData = { ...mapped, title, keywords };
 
   const d = analysisData;
   const chars = title.length;
@@ -843,18 +901,44 @@ function upChars(el) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   PUBLISH
+   PUBLISH — real API call
 ═══════════════════════════════════════════════════════════ */
-function publish() {
+async function publish() {
   if (!analysisData) { alert('Run analysis first.'); return; }
   const b = document.getElementById('pbtn');
   b.innerHTML='<span class="spin">◌</span>  Uploading photos & publishing...'; b.disabled=true;
-  setTimeout(()=>{
+  try {
+    const policies = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
+    const body = {
+      title:       document.getElementById('ttl')?.value || analysisData.title,
+      description: document.getElementById('desc-area')?.value || analysisData.desc,
+      ship_id:     policies.ship || '',
+      ret_id:      policies.ret  || '',
+      postal:      document.getElementById('zip-inp')?.value || '10001',
+      duration:    document.getElementById('list-dur')?.value || 'GTC',
+      dispatch:    document.getElementById('dispatch')?.value || '3',
+    };
+    const resp = await fetch(`${API}/publish`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body),
+    });
+    const result = await resp.json();
     b.innerHTML='✓ Published — List Another'; b.disabled=false;
     const r = document.getElementById('pres');
-    r.className='pub-res ok';
-    r.innerHTML='✓ Listed successfully\nItem ID: 387291048302\nhttps://www.ebay.com/itm/387291048302';
-  }, 3000);
+    if (result.success) {
+      r.className='pub-res ok';
+      r.innerHTML=`✓ Listed successfully\nItem ID: ${result.item_id}\n${result.url}`;
+    } else {
+      r.className='pub-res er';
+      r.textContent='✗ ' + (result.error || 'Publish failed');
+    }
+  } catch(err) {
+    b.innerHTML='Publish Listing to eBay →'; b.disabled=false;
+    const r = document.getElementById('pres');
+    r.className='pub-res er';
+    r.textContent='✗ Network error: ' + err.message;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
