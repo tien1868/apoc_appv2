@@ -165,6 +165,22 @@
     .save-note{font-family:'DM Mono',monospace;font-size:9px;color:var(--green);letter-spacing:.06em;opacity:0;transition:opacity .3s}
     .save-note.show{opacity:1}
 
+    /* TOGGLE SWITCH */
+    .toggle{position:relative;width:36px;height:20px;flex-shrink:0;display:inline-block}
+    .toggle input{opacity:0;width:0;height:0;position:absolute}
+    .toggle-track{position:absolute;inset:0;background:var(--surf3);border:1px solid var(--bdr-h);border-radius:10px;cursor:pointer;transition:all .2s}
+    .toggle-track::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;background:var(--t2);border-radius:50%;transition:all .2s}
+    .toggle input:checked+.toggle-track{background:var(--amber-d);border-color:var(--amber-b)}
+    .toggle input:checked+.toggle-track::after{transform:translateX(16px);background:var(--amber)}
+    .toggle-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+
+    /* CROP/ROTATE MODAL */
+    .edit-modal{position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.88);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+    .edit-modal canvas{max-width:90vw;max-height:60vh;border:1px solid var(--bdr-h);border-radius:6px;cursor:crosshair}
+    .edit-toolbar{display:flex;gap:10px;margin-top:16px;align-items:center;flex-wrap:wrap;justify-content:center}
+    .edit-toolbar .btn{min-width:auto;padding:10px 16px}
+    .crop-hint{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2);margin-top:8px;letter-spacing:.04em}
+
     @keyframes spin{to{transform:rotate(360deg)}}
     .spin{display:inline-block;animation:spin .8s linear infinite}
     @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -322,7 +338,7 @@
         </div>
       </div>
 
-      <!-- ZIP + listing defaults -->
+      <!-- ZIP + listing format + duration -->
       <div class="g3">
         <div>
           <label class="lbl">Origin ZIP Code
@@ -331,13 +347,24 @@
           <input class="f-inp mono" id="zip-inp" type="text" value="" placeholder="Detecting..." maxlength="10" oninput="saveZip()" />
         </div>
         <div>
+          <label class="lbl">Listing Format</label>
+          <select class="f-sel" id="list-fmt" onchange="onFormatChange();savePolicies()">
+            <option value="FixedPriceItem">Fixed Price</option>
+            <option value="Chinese">Auction</option>
+          </select>
+        </div>
+        <div>
           <label class="lbl">Listing Duration</label>
           <select class="f-sel" id="list-dur" onchange="savePolicies()">
             <option value="GTC">Good Till Cancelled</option>
-            <option value="30">30 Days</option>
-            <option value="7">7 Days</option>
+            <option value="Days_30">30 Days</option>
+            <option value="Days_7">7 Days</option>
           </select>
         </div>
+      </div>
+
+      <!-- Dispatch + price fields -->
+      <div class="g3" style="margin-top:12px">
         <div>
           <label class="lbl">Dispatch Time</label>
           <select class="f-sel" id="dispatch" onchange="savePolicies()">
@@ -346,6 +373,28 @@
             <option value="3" selected>3 business days</option>
             <option value="5">5 business days</option>
           </select>
+        </div>
+        <div id="price-group-1">
+          <label class="lbl" id="price-lbl-1">Buy It Now Price ($)</label>
+          <input class="f-inp mono" id="price-inp" type="number" step="0.01" min="0.99" placeholder="0.00" oninput="savePolicies()" />
+        </div>
+        <div id="price-group-2" style="display:none">
+          <label class="lbl">Buy It Now ($) <span style="color:var(--t3)">optional</span></label>
+          <input class="f-inp mono" id="bin-price-inp" type="number" step="0.01" min="0" placeholder="Optional" oninput="savePolicies()" />
+        </div>
+      </div>
+
+      <!-- Best Offer (fixed price only) -->
+      <div id="offer-wrap" style="margin-top:12px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <label class="toggle">
+            <input type="checkbox" id="best-offer-chk" onchange="onOfferToggle();savePolicies()">
+            <span class="toggle-track"></span>
+          </label>
+          <label class="toggle-label" for="best-offer-chk">Accept Best Offer</label>
+          <div id="min-offer-wrap" style="display:none;margin-left:12px">
+            <input class="f-inp mono" id="min-offer-inp" type="number" step="0.01" min="0" placeholder="Min offer $" style="width:140px" oninput="savePolicies()" />
+          </div>
         </div>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:8px">
@@ -422,14 +471,41 @@
 ═══════════════════════════════════════════════════════════ */
 function savePolicies() {
   localStorage.setItem('apoc2_policies', JSON.stringify({
-    ship:   document.getElementById('ship-policy').value,
-    ret:    document.getElementById('ret-policy').value,
-    pay:    document.getElementById('pay-policy').value,
-    dur:    document.getElementById('list-dur').value,
-    disp:   document.getElementById('dispatch').value,
-    gender: document.getElementById('gender-sel').value,
+    ship:      document.getElementById('ship-policy').value,
+    ret:       document.getElementById('ret-policy').value,
+    pay:       document.getElementById('pay-policy').value,
+    fmt:       document.getElementById('list-fmt').value,
+    dur:       document.getElementById('list-dur').value,
+    disp:      document.getElementById('dispatch').value,
+    gender:    document.getElementById('gender-sel').value,
+    price:     document.getElementById('price-inp').value,
+    binPrice:  document.getElementById('bin-price-inp').value,
+    bestOffer: document.getElementById('best-offer-chk').checked,
+    minOffer:  document.getElementById('min-offer-inp').value,
   }));
   flashSave();
+}
+function onFormatChange() {
+  const fmt = document.getElementById('list-fmt').value;
+  const durSel = document.getElementById('list-dur');
+  const priceLbl = document.getElementById('price-lbl-1');
+  const priceGroup2 = document.getElementById('price-group-2');
+  const offerWrap = document.getElementById('offer-wrap');
+  if (fmt === 'Chinese') {
+    durSel.innerHTML = '<option value="Days_1">1 Day</option><option value="Days_3">3 Days</option><option value="Days_5">5 Days</option><option value="Days_7" selected>7 Days</option><option value="Days_10">10 Days</option>';
+    priceLbl.textContent = 'Starting Bid ($)';
+    priceGroup2.style.display = '';
+    if (offerWrap) offerWrap.style.display = 'none';
+  } else {
+    durSel.innerHTML = '<option value="GTC">Good Till Cancelled</option><option value="Days_30">30 Days</option><option value="Days_7">7 Days</option>';
+    priceLbl.textContent = 'Buy It Now Price ($)';
+    priceGroup2.style.display = 'none';
+    if (offerWrap) offerWrap.style.display = '';
+  }
+}
+function onOfferToggle() {
+  const checked = document.getElementById('best-offer-chk').checked;
+  document.getElementById('min-offer-wrap').style.display = checked ? '' : 'none';
 }
 function saveZip() {
   localStorage.setItem('apoc2_zip', document.getElementById('zip-inp').value);
@@ -480,9 +556,14 @@ function loadSaved() {
   if (p.ship)   document.getElementById('ship-policy').value = p.ship;
   if (p.ret)    document.getElementById('ret-policy').value  = p.ret;
   if (p.pay)    document.getElementById('pay-policy').value  = p.pay;
+  if (p.fmt) { document.getElementById('list-fmt').value = p.fmt; onFormatChange(); }
   if (p.dur)    document.getElementById('list-dur').value    = p.dur;
   if (p.disp)   document.getElementById('dispatch').value    = p.disp;
   if (p.gender) document.getElementById('gender-sel').value  = p.gender;
+  if (p.price)    document.getElementById('price-inp').value     = p.price;
+  if (p.binPrice) document.getElementById('bin-price-inp').value = p.binPrice;
+  if (p.bestOffer) { document.getElementById('best-offer-chk').checked = true; onOfferToggle(); }
+  if (p.minOffer)  document.getElementById('min-offer-inp').value = p.minOffer;
   const z = localStorage.getItem('apoc2_zip');
   if (z) { document.getElementById('zip-inp').value = z; setZipStatus(z, 'saved'); }
   // Auto-reconnect eBay using refresh token
@@ -668,7 +749,7 @@ function renderDZ() {
   } else {
     dz.className = 'drop-zone filled';
     let h = '<div class="img-grid">';
-    files.forEach((f,i) => { const u=URL.createObjectURL(f); h+=`<div class="img-cell"><img src="${u}"/><button class="del" onclick="event.stopPropagation();delF(${i})">✕</button></div>`; });
+    files.forEach((f,i) => { const u=URL.createObjectURL(f); h+=`<div class="img-cell" onclick="openEditor(${i})"><img src="${u}"/><button class="del" onclick="event.stopPropagation();delF(${i})">✕</button></div>`; });
     if (files.length<5) h+=`<div class="img-add" onclick="event.stopPropagation();document.getElementById('fi').click()">+</div>`;
     h+='</div>';
     dz.innerHTML=h; dz.onclick=null;
@@ -705,6 +786,140 @@ async function removeBg(){
     b.style.color='var(--red)';b.style.borderColor='rgba(224,92,92,.28)';
     setTimeout(()=>{b.innerHTML='Remove Background';b.style.color='';b.style.borderColor='';},3000);
   }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CROP / ROTATE EDITOR
+═══════════════════════════════════════════════════════════ */
+function openEditor(index) {
+  const file = files[index];
+  if (!file) return;
+  const img = new Image();
+  img.onload = function() {
+    const state = { img, rotation: 0, crop: null, dragging: false, startX: 0, startY: 0 };
+
+    // Modal
+    const modal = document.createElement('div');
+    modal.className = 'edit-modal';
+
+    // Canvas
+    const cvs = document.createElement('canvas');
+    setupCanvas(cvs, state);
+    drawEditor(cvs, state);
+    modal.appendChild(cvs);
+
+    // Hint
+    const hint = document.createElement('div');
+    hint.className = 'crop-hint';
+    hint.textContent = 'Click + drag on image to crop · Use buttons to rotate';
+    modal.appendChild(hint);
+
+    // Toolbar
+    const bar = document.createElement('div');
+    bar.className = 'edit-toolbar';
+    const mkBtn = (label, cls, fn) => { const b = document.createElement('button'); b.className = 'btn' + (cls ? ' ' + cls : ''); b.textContent = label; b.onclick = fn; return b; };
+
+    bar.appendChild(mkBtn('↺ Rotate Left', '', () => { state.rotation = (state.rotation + 270) % 360; state.crop = null; setupCanvas(cvs, state); drawEditor(cvs, state); }));
+    bar.appendChild(mkBtn('Rotate Right ↻', '', () => { state.rotation = (state.rotation + 90) % 360; state.crop = null; setupCanvas(cvs, state); drawEditor(cvs, state); }));
+    bar.appendChild(mkBtn('Reset Crop', '', () => { state.crop = null; drawEditor(cvs, state); }));
+    bar.appendChild(mkBtn('Apply', 'pri', () => { applyEdit(state, index); modal.remove(); }));
+    bar.appendChild(mkBtn('Cancel', '', () => { modal.remove(); }));
+    modal.appendChild(bar);
+
+    // Mouse/touch events for crop
+    const getPos = (e) => {
+      const r = cvs.getBoundingClientRect();
+      const sx = cvs.width / r.width, sy = cvs.height / r.height;
+      const t = e.touches ? e.touches[0] : e;
+      return { x: (t.clientX - r.left) * sx, y: (t.clientY - r.top) * sy };
+    };
+    const onDown = (e) => { e.preventDefault(); const p = getPos(e); state.dragging = true; state.startX = p.x; state.startY = p.y; state.crop = null; };
+    const onMove = (e) => { if (!state.dragging) return; e.preventDefault(); const p = getPos(e); state.crop = { x: Math.min(state.startX, p.x), y: Math.min(state.startY, p.y), w: Math.abs(p.x - state.startX), h: Math.abs(p.y - state.startY) }; drawEditor(cvs, state); };
+    const onUp = () => { state.dragging = false; if (state.crop && (state.crop.w < 10 || state.crop.h < 10)) state.crop = null; };
+    cvs.addEventListener('mousedown', onDown);
+    cvs.addEventListener('mousemove', onMove);
+    cvs.addEventListener('mouseup', onUp);
+    cvs.addEventListener('touchstart', onDown, { passive: false });
+    cvs.addEventListener('touchmove', onMove, { passive: false });
+    cvs.addEventListener('touchend', onUp);
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+    document.body.appendChild(modal);
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+function setupCanvas(cvs, state) {
+  const img = state.img;
+  const swap = state.rotation % 180 !== 0;
+  cvs.width = swap ? img.height : img.width;
+  cvs.height = swap ? img.width : img.height;
+}
+
+function drawEditor(cvs, state) {
+  const ctx = cvs.getContext('2d');
+  const img = state.img;
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+  ctx.save();
+  ctx.translate(cvs.width / 2, cvs.height / 2);
+  ctx.rotate(state.rotation * Math.PI / 180);
+  ctx.drawImage(img, -img.width / 2, -img.height / 2);
+  ctx.restore();
+
+  // Draw crop overlay
+  if (state.crop && state.crop.w > 2 && state.crop.h > 2) {
+    const c = state.crop;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0, 0, cvs.width, c.y);
+    ctx.fillRect(0, c.y, c.x, c.h);
+    ctx.fillRect(c.x + c.w, c.y, cvs.width - c.x - c.w, c.h);
+    ctx.fillRect(0, c.y + c.h, cvs.width, cvs.height - c.y - c.h);
+    ctx.strokeStyle = 'var(--amber)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 4]);
+    ctx.strokeRect(c.x, c.y, c.w, c.h);
+    ctx.setLineDash([]);
+  }
+}
+
+function applyEdit(state, index) {
+  const off = document.createElement('canvas');
+  const img = state.img;
+  const swap = state.rotation % 180 !== 0;
+  let srcW = swap ? img.height : img.width;
+  let srcH = swap ? img.width : img.height;
+
+  if (state.crop) {
+    off.width = state.crop.w;
+    off.height = state.crop.h;
+  } else {
+    off.width = srcW;
+    off.height = srcH;
+  }
+
+  const ctx = off.getContext('2d');
+  // Draw rotated full image onto a temp canvas first
+  const tmp = document.createElement('canvas');
+  tmp.width = srcW; tmp.height = srcH;
+  const tc = tmp.getContext('2d');
+  tc.translate(srcW / 2, srcH / 2);
+  tc.rotate(state.rotation * Math.PI / 180);
+  tc.drawImage(img, -img.width / 2, -img.height / 2);
+
+  if (state.crop) {
+    ctx.drawImage(tmp, state.crop.x, state.crop.y, state.crop.w, state.crop.h, 0, 0, state.crop.w, state.crop.h);
+  } else {
+    ctx.drawImage(tmp, 0, 0);
+  }
+
+  off.toBlob((blob) => {
+    if (!blob) return;
+    const newFile = new File([blob], files[index]?.name || `photo_${index + 1}.jpg`, { type: 'image/jpeg' });
+    files[index] = newFile;
+    renderDZ();
+  }, 'image/jpeg', 0.92);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -883,6 +1098,13 @@ function buildReport(raw) {
   const keywords = [mapped.brand, mapped.sub_brand, mapped.material_full, mapped.color, mapped.origin, mapped.gender+"'s", mapped.size, ...(mapped.style||[])].filter(Boolean);
 
   analysisData = { ...mapped, title, keywords };
+
+  // Auto-fill price from analysis if empty
+  const priceInp = document.getElementById('price-inp');
+  if (priceInp && !priceInp.value) {
+    priceInp.value = mapped.price_high || mapped.price_low || '';
+    savePolicies();
+  }
 
   const d = analysisData;
   const chars = title.length;
@@ -1109,6 +1331,11 @@ async function publish() {
       occasion:    document.getElementById('sp-occasion')?.value || '',
       season:      document.getElementById('sp-season')?.value || '',
       lining_material: document.getElementById('sp-lining')?.value || '',
+      listing_format: document.getElementById('list-fmt')?.value || 'FixedPriceItem',
+      start_price:    document.getElementById('price-inp')?.value || '',
+      buy_now_price:  document.getElementById('bin-price-inp')?.value || '',
+      best_offer:     document.getElementById('best-offer-chk')?.checked || false,
+      min_offer:      document.getElementById('min-offer-inp')?.value || '',
     };
     const resp = await fetch(`${API}/publish`, {
       method:'POST',
@@ -1155,6 +1382,11 @@ function listAnother() {
   pbtn.onclick = function(){ publish(); };
   const bg = document.getElementById('bg-btn');
   bg.innerHTML = 'Remove Background'; bg.style.color = ''; bg.style.borderColor = '';
+  document.getElementById('price-inp').value = '';
+  document.getElementById('bin-price-inp').value = '';
+  document.getElementById('best-offer-chk').checked = false;
+  document.getElementById('min-offer-inp').value = '';
+  onOfferToggle();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
