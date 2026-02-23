@@ -453,17 +453,16 @@ function fillDropdownFromList(selId, list) {
   sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
 }
 function loadSaved() {
-  // Restore cached eBay policy lists so dropdowns are populated
+  // Restore cached eBay policy lists so dropdowns are populated instantly
   const ebay = JSON.parse(localStorage.getItem('apoc2_ebay') || 'null');
   if (ebay) {
     fillDropdownFromList('ship-policy', ebay.shipping || []);
     fillDropdownFromList('ret-policy',  ebay.return || []);
     fillDropdownFromList('pay-policy',  ebay.payment || []);
-    // Show connected UI (policies loaded from cache)
     document.getElementById('ebay-nc').style.display = 'none';
     document.getElementById('ebay-cn').style.display = 'block';
-    document.getElementById('ebay-acct').textContent = '✓ Policies loaded · Reconnect if session expired';
-    document.getElementById('hdr-ebay').textContent = 'eBay: Policies Cached';
+    document.getElementById('ebay-acct').textContent = '✓ Reconnecting...';
+    document.getElementById('hdr-ebay').textContent = 'eBay: Reconnecting...';
     document.getElementById('hdr-ebay').style.color = 'var(--amber)';
     document.getElementById('ebay-card').className = 'card ebay-card linked';
     ebayConnected = true;
@@ -478,6 +477,45 @@ function loadSaved() {
   if (p.gender) document.getElementById('gender-sel').value  = p.gender;
   const z = localStorage.getItem('apoc2_zip');
   if (z) { document.getElementById('zip-inp').value = z; setZipStatus(z, 'saved'); }
+  // Auto-reconnect eBay using refresh token
+  const rt = localStorage.getItem('apoc2_ebay_refresh');
+  if (rt) autoReconnectEbay(rt);
+}
+async function autoReconnectEbay(refreshToken) {
+  try {
+    const resp = await fetch(`${API}/ebay-refresh`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({refresh_token: refreshToken}),
+    });
+    const data = await resp.json();
+    if (data.error) {
+      localStorage.removeItem('apoc2_ebay_refresh');
+      document.getElementById('ebay-acct').textContent = '✗ Session expired · Please reconnect';
+      document.getElementById('hdr-ebay').textContent = 'eBay: Expired';
+      document.getElementById('hdr-ebay').style.color = 'var(--red)';
+      return;
+    }
+    if (data.connected) {
+      fillDropdownFromList('ship-policy', data.shipping_policies || []);
+      fillDropdownFromList('ret-policy',  data.return_policies || []);
+      fillDropdownFromList('pay-policy',  data.payment_policies || []);
+      saveEbayPolicies(data);
+      const sc=(data.shipping_policies||[]).length, rc=(data.return_policies||[]).length, pc=(data.payment_policies||[]).length;
+      document.getElementById('ebay-acct').textContent = `✓ Connected · ${sc} shipping · ${rc} return · ${pc} payment policies`;
+      document.getElementById('hdr-ebay').textContent = 'eBay: Connected';
+      document.getElementById('hdr-ebay').style.color = 'var(--green)';
+      // Restore saved policy selections after fresh dropdown fill
+      const p = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
+      if (p.ship) document.getElementById('ship-policy').value = p.ship;
+      if (p.ret)  document.getElementById('ret-policy').value  = p.ret;
+      if (p.pay)  document.getElementById('pay-policy').value  = p.pay;
+      ebayConnected = true;
+    }
+  } catch(err) {
+    document.getElementById('ebay-acct').textContent = '✗ Reconnect failed · Check connection';
+    document.getElementById('hdr-ebay').textContent = 'eBay: Offline';
+    document.getElementById('hdr-ebay').style.color = 'var(--red)';
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -595,6 +633,7 @@ async function completeAuth() {
     fillPolicy('pay-policy',  data.payment_policies || []);
 
     saveEbayPolicies(data);
+    if (data.refresh_token) localStorage.setItem('apoc2_ebay_refresh', data.refresh_token);
     ebayConnected = true;
     savePolicies();
   } catch(err) {
@@ -1068,14 +1107,16 @@ async function publish() {
       body: JSON.stringify(body),
     });
     const result = await resp.json();
-    b.innerHTML='✓ Published — List Another'; b.disabled=false;
     const r = document.getElementById('pres');
     if (result.success) {
       r.className='pub-res ok';
       r.innerHTML=`✓ Listed successfully\nItem ID: ${result.item_id}\n${result.url}`;
+      b.innerHTML='List Another →'; b.disabled=false;
+      b.onclick = listAnother;
     } else {
       r.className='pub-res er';
       r.textContent='✗ ' + (result.error || 'Publish failed');
+      b.innerHTML='Publish Listing to eBay →'; b.disabled=false;
     }
   } catch(err) {
     b.innerHTML='Publish Listing to eBay →'; b.disabled=false;
@@ -1083,6 +1124,29 @@ async function publish() {
     r.className='pub-res er';
     r.textContent='✗ Network error: ' + err.message;
   }
+}
+
+function listAnother() {
+  files = [];
+  analysisData = null;
+  renderDZ();
+  document.getElementById('fi').value = '';
+  document.getElementById('s1').className = 'card active';
+  document.getElementById('s2').className = 'card';
+  document.getElementById('s3').className = 'card';
+  document.getElementById('s2body').innerHTML =
+    '<div style="text-align:center;padding:20px 0;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--t3)">Upload photos then run analysis</div>';
+  document.getElementById('pub-preview').innerHTML = 'Complete analysis above to see listing preview.';
+  document.getElementById('pres').className = 'pub-res';
+  document.getElementById('pres').textContent = '';
+  const abtn = document.getElementById('abtn');
+  abtn.disabled = false; abtn.innerHTML = 'Analyze Garment →';
+  const pbtn = document.getElementById('pbtn');
+  pbtn.disabled = false; pbtn.innerHTML = 'Publish Listing to eBay →';
+  pbtn.onclick = function(){ publish(); };
+  const bg = document.getElementById('bg-btn');
+  bg.innerHTML = 'Remove Background'; bg.style.color = ''; bg.style.borderColor = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 /* ═══════════════════════════════════════════════════════════
