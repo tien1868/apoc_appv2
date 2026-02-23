@@ -289,9 +289,12 @@
       </div>
 
       <div id="ebay-cn" style="display:none">
-        <div class="connected-badge">
-          <div class="e-dot"></div>
-          <span id="ebay-acct">Connected</span>
+        <div class="connected-badge" style="justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="e-dot"></div>
+            <span id="ebay-acct">Connected</span>
+          </div>
+          <button class="ebay-complete-btn" style="padding:6px 12px;font-size:10px" onclick="document.getElementById('ebay-cn').style.display='none';document.getElementById('ebay-nc').style.display='block'">Reconnect</button>
         </div>
       </div>
 
@@ -368,7 +371,7 @@
       <input type="file" id="fi" multiple accept="image/*" style="display:none"/>
       <div style="margin-top:14px;margin-bottom:4px">
         <label class="lbl">Department</label>
-        <select class="f-sel" id="gender-sel" style="max-width:220px">
+        <select class="f-sel" id="gender-sel" style="max-width:220px" onchange="savePolicies()">
           <option value="Men">Men</option>
           <option value="Women">Women</option>
           <option value="Unisex">Unisex</option>
@@ -419,11 +422,12 @@
 ═══════════════════════════════════════════════════════════ */
 function savePolicies() {
   localStorage.setItem('apoc2_policies', JSON.stringify({
-    ship: document.getElementById('ship-policy').value,
-    ret:  document.getElementById('ret-policy').value,
-    pay:  document.getElementById('pay-policy').value,
-    dur:  document.getElementById('list-dur').value,
-    disp: document.getElementById('dispatch').value,
+    ship:   document.getElementById('ship-policy').value,
+    ret:    document.getElementById('ret-policy').value,
+    pay:    document.getElementById('pay-policy').value,
+    dur:    document.getElementById('list-dur').value,
+    disp:   document.getElementById('dispatch').value,
+    gender: document.getElementById('gender-sel').value,
   }));
   flashSave();
 }
@@ -436,13 +440,42 @@ function flashSave() {
   clearTimeout(n._t);
   n._t = setTimeout(() => n.classList.remove('show'), 2000);
 }
+function saveEbayPolicies(data) {
+  localStorage.setItem('apoc2_ebay', JSON.stringify({
+    shipping: data.shipping_policies || [],
+    return:   data.return_policies || [],
+    payment:  data.payment_policies || [],
+  }));
+}
+function fillDropdownFromList(selId, list) {
+  const sel = document.getElementById(selId);
+  if (!list.length) return;
+  sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+}
 function loadSaved() {
+  // Restore cached eBay policy lists so dropdowns are populated
+  const ebay = JSON.parse(localStorage.getItem('apoc2_ebay') || 'null');
+  if (ebay) {
+    fillDropdownFromList('ship-policy', ebay.shipping || []);
+    fillDropdownFromList('ret-policy',  ebay.return || []);
+    fillDropdownFromList('pay-policy',  ebay.payment || []);
+    // Show connected UI (policies loaded from cache)
+    document.getElementById('ebay-nc').style.display = 'none';
+    document.getElementById('ebay-cn').style.display = 'block';
+    document.getElementById('ebay-acct').textContent = '✓ Policies loaded · Reconnect if session expired';
+    document.getElementById('hdr-ebay').textContent = 'eBay: Policies Cached';
+    document.getElementById('hdr-ebay').style.color = 'var(--amber)';
+    document.getElementById('ebay-card').className = 'card ebay-card linked';
+    ebayConnected = true;
+  }
+  // Restore saved selections
   const p = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
-  if (p.ship) document.getElementById('ship-policy').value = p.ship;
-  if (p.ret)  document.getElementById('ret-policy').value  = p.ret;
-  if (p.pay)  document.getElementById('pay-policy').value  = p.pay;
-  if (p.dur)  document.getElementById('list-dur').value    = p.dur;
-  if (p.disp) document.getElementById('dispatch').value    = p.disp;
+  if (p.ship)   document.getElementById('ship-policy').value = p.ship;
+  if (p.ret)    document.getElementById('ret-policy').value  = p.ret;
+  if (p.pay)    document.getElementById('pay-policy').value  = p.pay;
+  if (p.dur)    document.getElementById('list-dur').value    = p.dur;
+  if (p.disp)   document.getElementById('dispatch').value    = p.disp;
+  if (p.gender) document.getElementById('gender-sel').value  = p.gender;
   const z = localStorage.getItem('apoc2_zip');
   if (z) { document.getElementById('zip-inp').value = z; setZipStatus(z, 'saved'); }
 }
@@ -561,6 +594,7 @@ async function completeAuth() {
     fillPolicy('ret-policy',  data.return_policies || []);
     fillPolicy('pay-policy',  data.payment_policies || []);
 
+    saveEbayPolicies(data);
     ebayConnected = true;
     savePolicies();
   } catch(err) {
