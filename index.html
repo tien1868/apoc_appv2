@@ -366,6 +366,16 @@
         <div class="up-sub">Include tag close-ups for best brand + size accuracy · JPG / PNG</div></div>
       </div>
       <input type="file" id="fi" multiple accept="image/*" style="display:none"/>
+      <div style="margin-top:14px;margin-bottom:4px">
+        <label class="lbl">Department</label>
+        <select class="f-sel" id="gender-sel" style="max-width:220px">
+          <option value="Men">Men</option>
+          <option value="Women">Women</option>
+          <option value="Unisex">Unisex</option>
+          <option value="Boys">Boys</option>
+          <option value="Girls">Girls</option>
+        </select>
+      </div>
       <div class="act-row">
         <button class="btn" onclick="clearAll()">✕ Clear</button>
         <button class="btn" id="bg-btn" onclick="removeBg()">Remove Background</button>
@@ -506,39 +516,56 @@ async function fallbackIP() {
    eBay AUTH
 ═══════════════════════════════════════════════════════════ */
 let ebayConnected = false;
-function startAuth(e) {
+async function startAuth(e) {
   e.preventDefault();
-  document.getElementById('auth-msg').textContent = 'Authorize on eBay then click Complete';
-  // production: window.open(AUTH_URL, '_blank')
-}
-function completeAuth() {
-  document.getElementById('auth-msg').textContent = '';
-  document.getElementById('ebay-nc').style.display = 'none';
-  document.getElementById('ebay-cn').style.display = 'block';
-  document.getElementById('ebay-acct').textContent = '✓ ghostsofnewyork · 3 shipping · 2 return · 1 payment policies loaded';
-  document.getElementById('hdr-ebay').textContent = 'eBay: Connected';
-  document.getElementById('hdr-ebay').style.color = 'var(--green)';
-  document.getElementById('ebay-card').className = 'card ebay-card linked';
-
-  // Populate policy dropdowns with demo data, preserve saved
-  const policies = {
-    ship: ['USPS Priority Mail (3–5 days)', 'FedEx Ground (5–7 days)', 'Calculated at checkout'],
-    ret:  ['30-day returns accepted', 'No returns', '60-day returns accepted'],
-    pay:  ['Immediate payment required', 'PayPal standard'],
-  };
-  function fill(id, opts) {
-    const sel = document.getElementById(id);
-    const prev = sel.value;
-    sel.innerHTML = opts.map((o,i) => `<option value="p${i+1}">${o}</option>`).join('');
-    const saved = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
-    const key = id.replace('-policy','').replace('ship','ship').replace('ret','ret').replace('pay','pay');
-    if (saved[key]) sel.value = saved[key];
+  const msg = document.getElementById('auth-msg');
+  msg.textContent = 'Loading eBay authorization...';
+  try {
+    const resp = await fetch(`${API}/ebay-auth-url`);
+    const data = await resp.json();
+    if (data.error) { msg.textContent = 'Error: ' + data.error; return; }
+    window.open(data.url, '_blank');
+    msg.textContent = 'Complete sign-in on eBay, then click Complete Authorization ↓';
+  } catch(err) {
+    msg.textContent = 'Failed to get auth URL: ' + err.message;
   }
-  fill('ship-policy', policies.ship);
-  fill('ret-policy',  policies.ret);
-  fill('pay-policy',  policies.pay);
-  ebayConnected = true;
-  savePolicies();
+}
+async function completeAuth() {
+  const msg = document.getElementById('auth-msg');
+  msg.textContent = 'Completing authorization...';
+  try {
+    const resp = await fetch(`${API}/ebay-complete`, { method: 'POST' });
+    const data = await resp.json();
+    if (data.error) { msg.textContent = 'Error: ' + data.error; return; }
+    if (!data.connected) { msg.textContent = 'Authorization incomplete. Sign in on eBay first.'; return; }
+
+    msg.textContent = '';
+    document.getElementById('ebay-nc').style.display = 'none';
+    document.getElementById('ebay-cn').style.display = 'block';
+    const sc = (data.shipping_policies||[]).length;
+    const rc = (data.return_policies||[]).length;
+    const pc = (data.payment_policies||[]).length;
+    document.getElementById('ebay-acct').textContent = `✓ Connected · ${sc} shipping · ${rc} return · ${pc} payment policies`;
+    document.getElementById('hdr-ebay').textContent = 'eBay: Connected';
+    document.getElementById('hdr-ebay').style.color = 'var(--green)';
+    document.getElementById('ebay-card').className = 'card ebay-card linked';
+
+    function fillPolicy(selId, policies) {
+      const sel = document.getElementById(selId);
+      sel.innerHTML = policies.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+      const saved = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
+      const key = selId.replace('-policy','');
+      if (saved[key]) sel.value = saved[key];
+    }
+    fillPolicy('ship-policy', data.shipping_policies || []);
+    fillPolicy('ret-policy',  data.return_policies || []);
+    fillPolicy('pay-policy',  data.payment_policies || []);
+
+    ebayConnected = true;
+    savePolicies();
+  } catch(err) {
+    msg.textContent = 'Connection failed: ' + err.message;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -688,6 +715,7 @@ async function doAnalysis() {
   try {
     const fd = new FormData();
     files.forEach(f => fd.append('images', f));
+    fd.append('gender', document.getElementById('gender-sel').value);
 
     tick(0, '✓ Photos received');
     tick(1, '...');
@@ -757,6 +785,12 @@ function buildReport(raw) {
     price_high:   raw.suggested_price_high || 0,
     price_rec:    raw.suggested_price_low || 0,
     price_reasoning: raw.price_reasoning || '',
+    pattern:      raw.pattern || 'Solid',
+    closure:      raw.closure || '',
+    fit:          raw.fit || 'Regular Fit',
+    occasion:     raw.occasion || 'Casual',
+    season:       raw.season || 'All Seasons',
+    lining:       raw.lining_material || '',
     conf_brand:   raw.confidence === 'high' ? 90 : raw.confidence === 'medium' ? 70 : 50,
     conf_cat:     raw.confidence === 'high' ? 88 : 65,
     conf_gender:  95,
@@ -902,6 +936,37 @@ function buildReport(raw) {
         <div class="spec-v"><input class="spec-inp" id="sp-catid" value="${d.cat_id}" /></div>
       </div>
 
+      <div class="spec-row">
+        <div class="spec-k">Pattern</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-pattern">
+          ${['Solid','Striped','Plaid','Paisley','Floral','Geometric','Abstract','Animal Print','Camouflage','Polka Dot','Colorblock','Herringbone','Houndstooth','Checkered/Gingham'].map(p=>`<option ${p===d.pattern?'selected':''}>${p}</option>`).join('')}
+        </select></div>
+        <div class="spec-k r2">Closure</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-closure">
+          ${['Button','Zip','Pull On','Snap','Hook & Eye','Tie','Buckle','Velcro','None'].map(c=>`<option ${c===d.closure?'selected':''}>${c}</option>`).join('')}
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Fit</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-fit">
+          ${['Regular Fit','Slim Fit','Relaxed','Oversized','Athletic Fit','Classic','Tailored','Loose'].map(f=>`<option ${f===d.fit?'selected':''}>${f}</option>`).join('')}
+        </select></div>
+        <div class="spec-k r2">Occasion</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-occasion">
+          ${['Casual','Formal','Business','Active/Athletic','Special Occasion','Outdoor','Everyday','Lounge'].map(o=>`<option ${o===d.occasion?'selected':''}>${o}</option>`).join('')}
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Season</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-season">
+          ${['All Seasons','Spring','Summer','Fall','Winter','Spring/Summer','Fall/Winter'].map(s=>`<option ${s===d.season?'selected':''}>${s}</option>`).join('')}
+        </select></div>
+        <div class="spec-k r2">Lining</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-lining" value="${d.lining}" /></div>
+      </div>
+
     </div>
 
     <!-- DESCRIPTION -->
@@ -941,6 +1006,27 @@ async function publish() {
       postal:      document.getElementById('zip-inp')?.value || '10001',
       duration:    document.getElementById('list-dur')?.value || 'GTC',
       dispatch:    document.getElementById('dispatch')?.value || '3',
+      brand:       document.getElementById('sp-brand')?.value || '',
+      gender:      document.getElementById('sp-dept')?.value || '',
+      size:        document.getElementById('sp-size')?.value || '',
+      size_type:   document.getElementById('sp-sizetype')?.value || '',
+      color:       document.getElementById('sp-color')?.value || '',
+      color_std:   document.getElementById('sp-colormap')?.value || '',
+      material:    document.getElementById('sp-material')?.value || '',
+      sleeve_length: document.getElementById('sp-sleeve')?.value || '',
+      neckline:    document.getElementById('sp-neckline')?.value || '',
+      style_details: (document.getElementById('sp-style')?.value || '').split(',').map(s=>s.trim()).filter(Boolean),
+      category:    document.getElementById('sp-type')?.value || '',
+      origin:      document.getElementById('sp-origin')?.value || '',
+      vintage:     document.getElementById('sp-vintage')?.value === 'Yes',
+      tags_present: document.getElementById('sp-nwt')?.value === 'Yes',
+      cat_id:      document.getElementById('sp-catid')?.value || '',
+      pattern:     document.getElementById('sp-pattern')?.value || '',
+      closure:     document.getElementById('sp-closure')?.value || '',
+      fit:         document.getElementById('sp-fit')?.value || '',
+      occasion:    document.getElementById('sp-occasion')?.value || '',
+      season:      document.getElementById('sp-season')?.value || '',
+      lining_material: document.getElementById('sp-lining')?.value || '',
     };
     const resp = await fetch(`${API}/publish`, {
       method:'POST',
