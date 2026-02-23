@@ -455,17 +455,25 @@ function fillDropdownFromList(selId, list) {
 function loadSaved() {
   // Restore cached eBay policy lists so dropdowns are populated instantly
   const ebay = JSON.parse(localStorage.getItem('apoc2_ebay') || 'null');
+  const rt = localStorage.getItem('apoc2_ebay_refresh');
   if (ebay) {
     fillDropdownFromList('ship-policy', ebay.shipping || []);
     fillDropdownFromList('ret-policy',  ebay.return || []);
     fillDropdownFromList('pay-policy',  ebay.payment || []);
     document.getElementById('ebay-nc').style.display = 'none';
     document.getElementById('ebay-cn').style.display = 'block';
-    document.getElementById('ebay-acct').textContent = '✓ Reconnecting...';
-    document.getElementById('hdr-ebay').textContent = 'eBay: Reconnecting...';
-    document.getElementById('hdr-ebay').style.color = 'var(--amber)';
     document.getElementById('ebay-card').className = 'card ebay-card linked';
-    ebayConnected = true;
+    if (rt) {
+      document.getElementById('ebay-acct').textContent = '✓ Reconnecting...';
+      document.getElementById('hdr-ebay').textContent = 'eBay: Reconnecting...';
+      document.getElementById('hdr-ebay').style.color = 'var(--amber)';
+      ebayConnected = true;
+    } else {
+      document.getElementById('ebay-acct').textContent = 'Policies loaded · Reconnect once to enable auto-login';
+      document.getElementById('hdr-ebay').textContent = 'eBay: Reconnect needed';
+      document.getElementById('hdr-ebay').style.color = 'var(--amber)';
+      ebayConnected = false;
+    }
   }
   // Restore saved selections
   const p = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
@@ -478,7 +486,6 @@ function loadSaved() {
   const z = localStorage.getItem('apoc2_zip');
   if (z) { document.getElementById('zip-inp').value = z; setZipStatus(z, 'saved'); }
   // Auto-reconnect eBay using refresh token
-  const rt = localStorage.getItem('apoc2_ebay_refresh');
   if (rt) autoReconnectEbay(rt);
 }
 async function autoReconnectEbay(refreshToken) {
@@ -490,9 +497,10 @@ async function autoReconnectEbay(refreshToken) {
     const data = await resp.json();
     if (data.error) {
       localStorage.removeItem('apoc2_ebay_refresh');
-      document.getElementById('ebay-acct').textContent = '✗ Session expired · Please reconnect';
-      document.getElementById('hdr-ebay').textContent = 'eBay: Expired';
-      document.getElementById('hdr-ebay').style.color = 'var(--red)';
+      document.getElementById('ebay-acct').textContent = 'Policies loaded · Reconnect to publish';
+      document.getElementById('hdr-ebay').textContent = 'eBay: Reconnect needed';
+      document.getElementById('hdr-ebay').style.color = 'var(--amber)';
+      ebayConnected = false;
       return;
     }
     if (data.connected) {
@@ -512,9 +520,10 @@ async function autoReconnectEbay(refreshToken) {
       ebayConnected = true;
     }
   } catch(err) {
-    document.getElementById('ebay-acct').textContent = '✗ Reconnect failed · Check connection';
+    document.getElementById('ebay-acct').textContent = 'Policies loaded · Reconnect to publish';
     document.getElementById('hdr-ebay').textContent = 'eBay: Offline';
-    document.getElementById('hdr-ebay').style.color = 'var(--red)';
+    document.getElementById('hdr-ebay').style.color = 'var(--amber)';
+    ebayConnected = false;
   }
 }
 
