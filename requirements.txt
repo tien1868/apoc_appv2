@@ -1,0 +1,7 @@
+anthropic[bedrock]
+fastapi
+uvicorn
+requests
+rembg
+pillow
+onnxruntime

@@ -235,13 +235,11 @@
       .drop-zone{min-height:130px}
       .up-title{font-size:13px}
 
-      /* item specifics — each spec-row becomes 4 stacked items */
+      /* item specifics — 2-col grid wraps all 4 items into 2 rows on mobile */
       .specs-wrap .spec-row{display:grid;grid-template-columns:100px 1fr;border-bottom:1px solid var(--bdr)}
       .spec-k{border-right:none!important;border-left:none!important;padding:8px 12px}
+      .spec-k.r2{border-left:none!important;border-top:1px solid var(--bdr)}
       .spec-v{padding:6px 10px}
-      /* hide the right-side label+field pair on mobile, they each get their own row */
-      .spec-k.r2{display:none}
-      .spec-row > .spec-v:last-child:nth-child(4){display:none}
 
       /* title font smaller on mobile */
       .title-area{font-size:15px}
@@ -1137,6 +1135,8 @@ function buildReport(raw) {
     occasion:     raw.occasion || 'Casual',
     season:       raw.season || 'All Seasons',
     lining:       raw.lining_material || '',
+    features:     raw.features || [],
+    care_instructions: raw.care_instructions || '',
     conf_brand:   raw.confidence === 'high' ? 90 : raw.confidence === 'medium' ? 70 : 50,
     conf_cat:     raw.confidence === 'high' ? 88 : 65,
     conf_gender:  95,
@@ -1291,8 +1291,8 @@ function buildReport(raw) {
           <option ${!d.nwt?'selected':''}>No</option>
           <option ${d.nwt?'selected':''}>Yes</option>
         </select></div>
-        <div class="spec-k r2">eBay Category ID</div>
-        <div class="spec-v"><input class="spec-inp" id="sp-catid" value="${d.cat_id}" /></div>
+        <div class="spec-k r2">Era</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-era" value="${d.vintage?d.era:'Contemporary'}" /></div>
       </div>
 
       <div class="spec-row">
@@ -1335,8 +1335,41 @@ function buildReport(raw) {
 
     </div>
 
+    <!-- MEASUREMENTS -->
+    <div class="lbl" style="margin:12px 0 8px">Measurements (inches)
+      <span style="color:var(--t3);font-size:8px;letter-spacing:.04em"> · Flat lay · Enter values for eBay description</span>
+    </div>
+    <div class="specs-wrap" style="margin-bottom:12px">
+      <div class="spec-row">
+        <div class="spec-k">Chest</div>
+        <div class="spec-v"><input class="spec-inp" id="m-chest" placeholder="pit to pit" /></div>
+        <div class="spec-k r2">Length</div>
+        <div class="spec-v"><input class="spec-inp" id="m-length" placeholder="top to hem" /></div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-k">Sleeve</div>
+        <div class="spec-v"><input class="spec-inp" id="m-sleeve" placeholder="shoulder to cuff" /></div>
+        <div class="spec-k r2">Shoulder</div>
+        <div class="spec-v"><input class="spec-inp" id="m-shoulder" placeholder="seam to seam" /></div>
+      </div>
+      <div class="spec-row">
+        <div class="spec-k">Waist</div>
+        <div class="spec-v"><input class="spec-inp" id="m-waist" placeholder="for pants/skirts" /></div>
+        <div class="spec-k r2">Inseam</div>
+        <div class="spec-v"><input class="spec-inp" id="m-inseam" placeholder="for pants" /></div>
+      </div>
+    </div>
+
+    <!-- FEATURES -->
+    <div class="lbl" style="margin-bottom:7px">Features</div>
+    <textarea class="f-text" id="features-area" rows="2" placeholder="Notable design details">${(d.features||[]).join(', ')}</textarea>
+
+    <!-- CARE -->
+    <div class="lbl" style="margin:8px 0 7px">Care Instructions</div>
+    <input class="f-text" id="care-area" value="${d.care_instructions||''}" placeholder="From care label" />
+
     <!-- DESCRIPTION -->
-    <div class="lbl" style="margin-bottom:7px">Description</div>
+    <div class="lbl" style="margin:8px 0 7px">Description</div>
     <textarea class="f-text" id="desc-area" rows="5">${d.desc}</textarea>
 
   </div>`;
@@ -1397,6 +1430,14 @@ async function publish() {
       season:      document.getElementById('sp-season')?.value || '',
       lining_material: document.getElementById('sp-lining')?.value || '',
       sku:         document.getElementById('sp-sku')?.value || '',
+      features:    (document.getElementById('features-area')?.value || '').split(',').map(s=>s.trim()).filter(Boolean),
+      care_instructions: document.getElementById('care-area')?.value || '',
+      m_chest:     document.getElementById('m-chest')?.value || '',
+      m_length:    document.getElementById('m-length')?.value || '',
+      m_sleeve:    document.getElementById('m-sleeve')?.value || '',
+      m_shoulder:  document.getElementById('m-shoulder')?.value || '',
+      m_waist:     document.getElementById('m-waist')?.value || '',
+      m_inseam:    document.getElementById('m-inseam')?.value || '',
       listing_format: document.getElementById('list-fmt')?.value || 'FixedPriceItem',
       start_price:    document.getElementById('price-inp')?.value || '',
       buy_now_price:  document.getElementById('bin-price-inp')?.value || '',
@@ -1453,6 +1494,10 @@ function listAnother() {
   document.getElementById('best-offer-chk').checked = false;
   document.getElementById('min-offer-inp').value = '';
   onOfferToggle();
+  // Clear measurements
+  ['m-chest','m-length','m-sleeve','m-shoulder','m-waist','m-inseam'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
