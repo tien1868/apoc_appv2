@@ -415,7 +415,7 @@
       <div class="drop-zone" id="dz" onclick="document.getElementById('fi').click()">
         <div class="up-ico">↑</div>
         <div><div class="up-title">Drop photos or click to upload</div>
-        <div class="up-sub">Include tag close-ups for best brand + size accuracy · JPG / PNG</div></div>
+        <div class="up-sub">Include clear close-ups of size tag, brand label, and care/content label · JPG / PNG</div></div>
       </div>
       <input type="file" id="fi" multiple accept="image/*" style="display:none"/>
       <div style="margin-top:14px;margin-bottom:4px">
@@ -744,7 +744,7 @@ function addFiles(f) { Array.from(f).forEach(x => { if (files.length < 12) files
 function renderDZ() {
   if (!files.length) {
     dz.className = 'drop-zone';
-    dz.innerHTML = `<div class="up-ico">↑</div><div><div class="up-title">Drop photos or click to upload</div><div class="up-sub">Include tag close-ups for best brand + size accuracy · JPG / PNG</div></div>`;
+    dz.innerHTML = `<div class="up-ico">↑</div><div><div class="up-title">Drop photos or click to upload</div><div class="up-sub">Include clear close-ups of size tag, brand label, and care/content label · JPG / PNG</div></div>`;
     dz.onclick = () => document.getElementById('fi').click();
   } else {
     dz.className = 'drop-zone filled';
