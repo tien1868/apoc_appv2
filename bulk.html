@@ -1,0 +1,647 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>APOC² Bulk Lister</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root{--bg:#0c0c0b;--surf:#141413;--surf2:#1a1918;--surf3:#222120;--bdr:#2a2928;--bdr-h:#3a3938;--text:#e8e6e1;--t2:#a09d96;--t3:#6b6862;--amber:#e8924a;--amber-b:rgba(232,146,74,.22);--amber-d:rgba(232,146,74,.08);--green:#3ecf8e;--green-b:rgba(62,207,142,.22);--green-d:rgba(62,207,142,.08);--red:#e05c5c;--red-d:rgba(224,92,92,.08);--blue:#5b9cf6;--r:8px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;line-height:1.5;min-height:100vh}
+  .wrap{max-width:960px;margin:0 auto;padding:24px 20px 60px}
+
+  /* Header */
+  .hdr{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+  .hdr-icon{width:38px;height:38px;border-radius:8px;background:var(--amber-d);border:1px solid var(--amber-b);display:flex;align-items:center;justify-content:center;font-size:18px}
+  h1{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;letter-spacing:-.03em}
+  .subtitle{font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);margin-bottom:28px}
+
+  /* Steps */
+  .steps{display:flex;align-items:center;gap:0;margin-bottom:32px;flex-wrap:wrap}
+  .step{display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:12px;font-weight:600;letter-spacing:.04em}
+  .step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;border:2px solid var(--bdr);background:var(--surf2);color:var(--t3);flex-shrink:0}
+  .step.done .step-dot{background:rgba(62,207,142,.1);border-color:var(--green);color:var(--green)}
+  .step.active .step-dot{background:var(--amber-d);border-color:var(--amber);color:var(--amber)}
+  .step.done{color:var(--green)}.step.active{color:var(--amber)}.step.future{color:var(--t3)}
+  .step-line{width:28px;height:2px;background:var(--bdr);margin:0 6px}
+  .step-line.done{background:rgba(62,207,142,.3)}
+
+  /* Cards */
+  .card{background:var(--surf);border:1px solid var(--bdr);border-radius:10px;margin-bottom:12px;overflow:hidden}
+  .card-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;transition:background .1s}
+  .card-head:hover{background:var(--surf2)}
+  .card-body{padding:16px 18px;border-top:1px solid var(--bdr);background:var(--bg)}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 18px;border-radius:var(--r);border:1px solid var(--bdr-h);background:var(--surf2);color:var(--t2);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+  .btn:hover{background:var(--surf3);color:var(--text)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.pri{background:var(--amber);border-color:var(--amber);color:#000}
+  .btn.pri:hover{background:#f0a060;transform:translateY(-1px)}
+  .btn.grn{background:var(--green);border-color:var(--green);color:#000}
+  .btn.grn:hover{background:#4fe09a;transform:translateY(-1px)}
+  .btn.sm{padding:6px 12px;font-size:11px}
+
+  /* Inputs */
+  .inp{width:100%;background:var(--surf2);border:1px solid var(--bdr-h);border-radius:var(--r);padding:8px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none}
+  .inp:focus{border-color:var(--amber-b)}
+  .inp.mono{font-family:'DM Mono',monospace}
+
+  /* Pills */
+  .pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:99px;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;border:1px solid var(--bdr);background:var(--surf2);color:var(--t2)}
+  .pill.y{background:var(--amber-d);border-color:var(--amber-b);color:var(--amber)}
+  .pill.g{background:var(--green-d);border-color:var(--green-b);color:var(--green)}
+  .pill.r{background:var(--red-d);border-color:rgba(224,92,92,.22);color:var(--red)}
+
+  /* Drop zone */
+  .dropzone{border:2px dashed var(--bdr-h);border-radius:12px;padding:48px 24px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:24px}
+  .dropzone:hover,.dropzone.over{border-color:rgba(232,146,74,.5);background:var(--amber-d)}
+  .dropzone.has{border-color:rgba(62,207,142,.4);background:var(--green-d)}
+
+  /* Thumbs */
+  .thumbs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:20px}
+  .thumb{width:52px;height:52px;border-radius:6px;object-fit:cover;border:1px solid var(--bdr)}
+  .thumb-more{width:52px;height:52px;border-radius:6px;background:var(--surf2);border:1px solid var(--bdr);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:10px;color:var(--t3)}
+
+  /* Progress bar */
+  .prog-bar{height:6px;background:var(--surf2);border-radius:3px;overflow:hidden;margin-bottom:24px}
+  .prog-fill{height:100%;border-radius:3px;transition:width .4s;background:var(--amber)}
+  .prog-fill.done{background:var(--green)}
+
+  /* Inventory row */
+  .inv-row{display:flex;align-items:flex-start;gap:0;transition:background .1s}
+  .inv-row:hover{background:var(--surf2)}
+  .inv-check{padding:18px 14px;cursor:pointer;flex-shrink:0}
+  .inv-photos{display:flex;gap:4px;padding:14px 0;flex-shrink:0}
+  .inv-details{flex:1;padding:14px 14px;min-width:0}
+  .inv-price{padding:14px 18px;text-align:right;flex-shrink:0}
+
+  /* Grid for processing */
+  .proc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .proc-card{text-align:center;padding:14px;background:var(--surf);border:1px solid var(--bdr);border-radius:10px}
+
+  /* Responsive */
+  @media(max-width:600px){
+    .step span{display:none}
+    .step-line{width:16px}
+    .inv-row{flex-wrap:wrap}
+    .inv-price{width:100%;text-align:left;padding:0 14px 14px}
+  }
+
+  /* Spin */
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spin{display:inline-block;animation:spin 1s linear infinite}
+
+  /* Label */
+  .lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin-bottom:6px}
+
+  /* Measurement grid */
+  .m-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:500px){.m-grid{grid-template-columns:repeat(2,1fr)}}
+
+  /* Title input inline */
+  .title-inp{width:100%;background:transparent;border:1px solid transparent;color:var(--text);font-family:'Syne',sans-serif;font-size:14px;font-weight:600;padding:4px 0;outline:none;margin-bottom:6px}
+  .title-inp:focus{border-color:var(--amber-b);border-radius:4px}
+
+  /* Price input */
+  .price-inp{width:72px;background:transparent;border:1px solid transparent;color:var(--amber);font-family:'DM Mono',monospace;font-size:18px;font-weight:700;text-align:right;padding:4px 0;outline:none}
+  .price-inp:focus{border-color:var(--amber-b);border-radius:4px}
+
+  /* Back link */
+  .back-link{font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);text-decoration:none;margin-bottom:16px;display:inline-block}
+  .back-link:hover{color:var(--amber)}
+</style>
+</head><body>
+<div class="wrap">
+  <a href="/" class="back-link">← Back to single lister</a>
+  <div class="hdr">
+    <div class="hdr-icon">⚡</div>
+    <h1>BULK LISTER</h1>
+  </div>
+  <div class="subtitle">Drop photos → analyze → publish to eBay in one workflow</div>
+
+  <div id="steps"></div>
+  <div id="app"></div>
+</div>
+
+<script>
+const API = localStorage.getItem('apoc2_api') || 'https://tien1868-apoc-app.hf.space';
+
+/* ═══════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════ */
+let phase = 0;           // 0=upload 1=groups 2=process 3=inventory 4=publish
+let allPhotos = [];
+let perGroup = 5;
+let removeBg = true;
+let groups = [];         // [{id, files}]
+let measurements = {};   // {groupId: {chest:'', length:'', ...}}
+let processStatus = {};  // {groupId: 'waiting'|'analyzing'|'removing-bg'|'done'|'error'}
+let inventory = [];      // [{id, files, images_b64, analysis, title, price, brand, size, condition, error}]
+let selected = new Set();
+let publishStatus = {};  // {id: 'publishing'|{status:'done',item_id,url}|{status:'error',error}}
+let expandedGroup = null;
+
+/* ═══════════════════════════════════════════════════
+   RENDER
+═══════════════════════════════════════════════════ */
+function render() {
+  renderSteps();
+  const app = document.getElementById('app');
+  if (phase === 0) renderUpload(app);
+  else if (phase === 1) renderGroups(app);
+  else if (phase === 2) renderProcess(app);
+  else if (phase === 3) renderInventory(app);
+  else if (phase === 4) renderPublish(app);
+}
+
+function renderSteps() {
+  const names = ['Upload','Groups','Process','Review','Publish'];
+  const el = document.getElementById('steps');
+  el.innerHTML = '<div class="steps">' + names.map((n,i) => {
+    const cls = i < phase ? 'done' : i === phase ? 'active' : 'future';
+    const dot = i < phase ? '✓' : (i+1);
+    const line = i < names.length-1 ? `<div class="step-line ${i<phase?'done':''}"></div>` : '';
+    return `<div class="step ${cls}"><div class="step-dot">${dot}</div><span>${n}</span></div>${line}`;
+  }).join('') + '</div>';
+}
+
+/* ── Phase 0: Upload ── */
+function renderUpload(el) {
+  const n = allPhotos.length;
+  const garments = Math.floor(n / perGroup);
+  const leftover = n % perGroup;
+
+  let thumbsHtml = '';
+  if (n > 0) {
+    thumbsHtml = '<div class="thumbs">';
+    const show = Math.min(n, 50);
+    for (let i = 0; i < show; i++) {
+      thumbsHtml += `<img class="thumb" src="${URL.createObjectURL(allPhotos[i])}" />`;
+    }
+    if (n > 50) thumbsHtml += `<div class="thumb-more">+${n-50}</div>`;
+    thumbsHtml += '</div>';
+  }
+
+  el.innerHTML = `
+    <div class="dropzone ${n?'has':''}" id="dz" onclick="document.getElementById('fi').click()">
+      <input type="file" id="fi" multiple accept="image/*" style="display:none" />
+      <div style="font-size:36px;margin-bottom:8px">${n?'✓':'📸'}</div>
+      ${n
+        ? `<div style="font-size:20px;font-weight:700;color:var(--green)">${n} photos loaded</div>
+           <div style="font-size:12px;color:var(--t3);margin-top:4px">Click or drop more to add</div>`
+        : `<div style="font-size:17px;font-weight:600;color:var(--t2)">Drop all your photos here</div>
+           <div style="font-size:12px;color:var(--t3);margin-top:4px">Or click to browse — select 50, 80, 100+ at once</div>`
+      }
+    </div>
+    ${thumbsHtml}
+    ${n > 0 ? `
+    <div class="card" style="padding:20px">
+      <div style="display:flex;align-items:flex-end;gap:20px;flex-wrap:wrap">
+        <div style="flex:1;min-width:160px">
+          <div class="lbl">Photos per garment</div>
+          <input class="inp mono" id="per-group" type="number" min="1" max="20" value="${perGroup}" style="width:100px" />
+          <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);margin-top:6px">
+            → ${garments} garment${garments!==1?'s':''}${leftover ? ` + ${leftover} leftover` : ''}
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t2);cursor:pointer;display:flex;align-items:center;gap:6px">
+            <input type="checkbox" id="bg-chk" ${removeBg?'checked':''} style="accent-color:var(--amber)" />
+            Remove backgrounds
+          </label>
+        </div>
+        <div style="display:flex;gap:10px">
+          <button class="btn pri" onclick="proceedToGroups()">Review Groups →</button>
+          <button class="btn" onclick="allPhotos=[];render()">Clear</button>
+        </div>
+      </div>
+    </div>` : ''}
+  `;
+
+  // Wire events
+  const fi = document.getElementById('fi');
+  fi.onchange = e => { handleFiles(e.target.files); fi.value=''; };
+  const dz = document.getElementById('dz');
+  dz.ondragover = e => { e.preventDefault(); dz.classList.add('over'); };
+  dz.ondragleave = () => dz.classList.remove('over');
+  dz.ondrop = e => { e.preventDefault(); dz.classList.remove('over'); handleFiles(e.dataTransfer.files); };
+  const pg = document.getElementById('per-group');
+  if (pg) pg.onchange = () => { perGroup = Math.max(1, parseInt(pg.value)||1); render(); };
+  const bg = document.getElementById('bg-chk');
+  if (bg) bg.onchange = () => { removeBg = bg.checked; };
+}
+
+function handleFiles(fileList) {
+  const imgs = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+  allPhotos = allPhotos.concat(imgs);
+  render();
+}
+
+function chunk(arr, size) {
+  const out = [];
+  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+  return out;
+}
+
+function proceedToGroups() {
+  groups = chunk(allPhotos, perGroup).map((files, i) => ({ id: i, files }));
+  phase = 1;
+  render();
+}
+
+/* ── Phase 1: Groups ── */
+function renderGroups(el) {
+  let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:15px;font-weight:700">${groups.length} garment groups</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);margin-top:2px">Review photo splits · Add measurements (optional)</div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn" onclick="phase=0;render()">← Back</button>
+        <button class="btn pri" onclick="processAll()">⚡ Process All ${groups.length} →</button>
+      </div>
+    </div>
+  `;
+
+  for (const g of groups) {
+    const isOpen = expandedGroup === g.id;
+    const m = measurements[g.id];
+    const hasMeasure = m && Object.values(m).some(v => v);
+
+    let thumbs = '';
+    const show = Math.min(g.files.length, 6);
+    for (let i = 0; i < show; i++) {
+      thumbs += `<img class="thumb" src="${URL.createObjectURL(g.files[i])}" style="width:40px;height:40px" />`;
+    }
+    if (g.files.length > 6) thumbs += `<div class="thumb-more" style="width:40px;height:40px;font-size:9px">+${g.files.length-6}</div>`;
+
+    html += `<div class="card">
+      <div class="card-head" onclick="expandedGroup=${isOpen?'null':g.id};render()">
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="pill y">#${g.id+1}</span>
+          <div style="display:flex;gap:3px">${thumbs}</div>
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t3)">${g.files.length} photos</span>
+          ${hasMeasure ? '<span class="pill g">measured</span>' : ''}
+        </div>
+        <span style="color:var(--t3);font-size:12px">${isOpen?'▲':'▼'}</span>
+      </div>
+      ${isOpen ? `<div class="card-body">
+        <div class="lbl" style="margin-bottom:10px">Measurements (inches) — optional</div>
+        <div class="m-grid">
+          ${['chest','length','sleeve','shoulder','waist','inseam'].map(f => `
+            <div>
+              <div class="lbl">${f}</div>
+              <input class="inp mono" type="number" placeholder="—" id="m-${g.id}-${f}"
+                value="${(measurements[g.id]||{})[f]||''}" onchange="setMeasure(${g.id},'${f}',this.value)" />
+            </div>
+          `).join('')}
+        </div>
+      </div>` : ''}
+    </div>`;
+  }
+
+  html += `<div style="margin-top:16px;display:flex;justify-content:flex-end">
+    <button class="btn pri" onclick="processAll()">⚡ Process All ${groups.length} Garments →</button>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+function setMeasure(gid, field, val) {
+  if (!measurements[gid]) measurements[gid] = {};
+  measurements[gid][field] = val;
+}
+
+/* ── Phase 2: Processing ── */
+async function processAll() {
+  phase = 2;
+  processStatus = {};
+  inventory = [];
+  groups.forEach(g => processStatus[g.id] = 'waiting');
+  render();
+
+  for (const g of groups) {
+    processStatus[g.id] = 'analyzing';
+    render();
+
+    try {
+      // 1. Analyze
+      const fd = new FormData();
+      g.files.forEach(f => fd.append('images', f));
+      const analyzeResp = await fetch(`${API}/analyze`, { method: 'POST', body: fd });
+      if (!analyzeResp.ok) throw new Error(`Analysis HTTP ${analyzeResp.status}`);
+      const analyzeResult = await analyzeResp.json();
+      if (!analyzeResult.success) throw new Error(analyzeResult.error || 'Analysis failed');
+
+      // 2. Remove background (optional)
+      let images_b64 = [];
+      if (removeBg) {
+        processStatus[g.id] = 'removing-bg';
+        render();
+        const bgFd = new FormData();
+        g.files.forEach(f => bgFd.append('images', f));
+        const bgResp = await fetch(`${API}/remove-bg`, { method: 'POST', body: bgFd });
+        if (bgResp.ok) {
+          const bgResult = await bgResp.json();
+          if (bgResult.success) images_b64 = bgResult.images;
+        }
+        // If BG removal fails, fall back to original images as base64
+        if (!images_b64.length) {
+          images_b64 = await Promise.all(g.files.map(f => fileToBase64(f)));
+        }
+      } else {
+        images_b64 = await Promise.all(g.files.map(f => fileToBase64(f)));
+      }
+
+      const d = analyzeResult.data;
+      const m = measurements[g.id] || {};
+
+      processStatus[g.id] = 'done';
+      inventory.push({
+        id: g.id, files: g.files, images_b64, analysis: d,
+        title: d.title || '', price: d.suggested_price_high || d.suggested_price_low || 0,
+        brand: d.brand || '', size: d.size || '',
+        condition: d.condition_label || 'Good',
+        dept: d.gender || 'Unisex',
+        measurements: m,
+        status: 'ready'
+      });
+    } catch (err) {
+      processStatus[g.id] = 'error';
+      inventory.push({
+        id: g.id, files: g.files, images_b64: [], analysis: {},
+        title: '', price: 0, brand: '', size: '', condition: '',
+        dept: '', measurements: {}, status: 'error', error: err.message
+      });
+    }
+    render();
+  }
+
+  // Move to inventory
+  selected = new Set(inventory.filter(i => i.status === 'ready').map(i => i.id));
+  phase = 3;
+  render();
+}
+
+function fileToBase64(file) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderProcess(el) {
+  const total = groups.length;
+  const done = Object.values(processStatus).filter(s => s === 'done' || s === 'error').length;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+
+  let html = `
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px">Analyzing garments...</div>
+    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);margin-bottom:16px">
+      Claude is reading tags, classifying, and pricing each item
+    </div>
+    <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);margin-bottom:6px">
+      <span>${done} / ${total} complete</span><span>${pct}%</span>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+    <div class="proc-grid">
+  `;
+
+  for (const g of groups) {
+    const st = processStatus[g.id] || 'waiting';
+    let badge = '';
+    if (st === 'waiting') badge = '<span class="pill">waiting</span>';
+    else if (st === 'analyzing') badge = '<span class="pill y"><span class="spin">◌</span> analyzing</span>';
+    else if (st === 'removing-bg') badge = '<span class="pill y"><span class="spin">◌</span> bg remove</span>';
+    else if (st === 'done') badge = '<span class="pill g">✓ done</span>';
+    else if (st === 'error') badge = '<span class="pill r">✗ error</span>';
+
+    let thumbs = '';
+    const show = Math.min(g.files.length, 4);
+    for (let i = 0; i < show; i++) {
+      thumbs += `<img class="thumb" src="${URL.createObjectURL(g.files[i])}" style="width:44px;height:44px" />`;
+    }
+
+    html += `<div class="proc-card">
+      <div style="display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin-bottom:8px">${thumbs}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);margin-bottom:6px">Garment ${g.id+1}</div>
+      ${badge}
+    </div>`;
+  }
+
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+/* ── Phase 3: Inventory ── */
+function renderInventory(el) {
+  const readyCount = inventory.filter(i => i.status === 'ready').length;
+  const totalValue = inventory.filter(i => selected.has(i.id)).reduce((s,i) => s + (parseFloat(i.price)||0), 0);
+
+  let html = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px">
+      <div>
+        <div style="font-size:15px;font-weight:700">Inventory — ${inventory.length} items</div>
+        <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);margin-top:2px">${selected.size} selected · $${totalValue.toFixed(2)} total</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn sm" onclick="selectAllInv()">Select All</button>
+        <button class="btn sm" onclick="selected=new Set();render()">None</button>
+        <button class="btn grn" ${selected.size===0?'disabled':''} onclick="publishSelected()">
+          📤 Publish ${selected.size} to eBay
+        </button>
+      </div>
+    </div>
+  `;
+
+  for (const item of inventory) {
+    const isSel = selected.has(item.id);
+    const isErr = item.status === 'error';
+
+    let thumbs = '';
+    const show = Math.min((item.files||[]).length, 3);
+    for (let i = 0; i < show; i++) {
+      thumbs += `<img class="thumb" src="${URL.createObjectURL(item.files[i])}" style="width:60px;height:60px" />`;
+    }
+    if ((item.files||[]).length > 3) {
+      thumbs += `<div class="thumb-more" style="width:60px;height:60px">+${item.files.length-3}</div>`;
+    }
+
+    html += `<div class="card" style="border-color:${isSel?'var(--amber)':'var(--bdr)'};opacity:${isErr?.5:1}">
+      <div class="inv-row">
+        <div class="inv-check" onclick="${isErr?'':'toggleSel('+item.id+')'}">
+          <span style="font-size:18px;color:${isSel?'var(--amber)':'var(--t3)'}">${isSel?'☑':'☐'}</span>
+        </div>
+        <div class="inv-photos">${thumbs}</div>
+        <div class="inv-details">
+          ${isErr
+            ? `<div style="color:var(--red);font-size:12px">⚠ Analysis failed — ${item.error}</div>`
+            : `<input class="title-inp" value="${esc(item.title)}" onchange="updItem(${item.id},'title',this.value)" />
+               <div style="display:flex;gap:6px;flex-wrap:wrap">
+                 <span class="pill">${esc(item.brand)}</span>
+                 <span class="pill">${esc(item.size)}</span>
+                 <span class="pill">${esc(item.condition)}</span>
+                 <span class="pill g">${esc(item.dept)}</span>
+               </div>`
+          }
+        </div>
+        ${!isErr ? `<div class="inv-price">
+          <div class="lbl">price</div>
+          <div style="display:flex;align-items:center;gap:2px">
+            <span style="color:var(--t3);font-size:14px">$</span>
+            <input class="price-inp" type="number" step="0.01" min="0"
+              value="${item.price}" onchange="updItem(${item.id},'price',parseFloat(this.value))" />
+          </div>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  html += `<div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
+    <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--t3)">
+      Total: $${totalValue.toFixed(2)} across ${selected.size} items
+    </div>
+    <button class="btn grn" ${selected.size===0?'disabled':''} onclick="publishSelected()">
+      📤 Publish ${selected.size} Items to eBay →
+    </button>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+function esc(s) { return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function toggleSel(id) { selected.has(id) ? selected.delete(id) : selected.add(id); render(); }
+function selectAllInv() { selected = new Set(inventory.filter(i=>i.status==='ready').map(i=>i.id)); render(); }
+function updItem(id, field, val) {
+  const item = inventory.find(i => i.id === id);
+  if (item) item[field] = val;
+}
+
+/* ── Phase 4: Publish ── */
+async function publishSelected() {
+  phase = 4;
+  publishStatus = {};
+  render();
+
+  const policies = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
+  const toPublish = inventory.filter(i => selected.has(i.id));
+
+  for (const item of toPublish) {
+    publishStatus[item.id] = 'publishing';
+    render();
+
+    try {
+      const d = item.analysis;
+      const m = item.measurements || {};
+      const body = {
+        // Bulk mode fields
+        images_b64: item.images_b64,
+        analysis_data: d,
+        // Overrides
+        title: item.title,
+        start_price: String(item.price || d.suggested_price_high || d.suggested_price_low || '9.99'),
+        listing_format: 'FixedPriceItem',
+        duration: 'GTC',
+        dispatch: '3',
+        postal: policies.zip || '10001',
+        ship_id: policies.ship || '',
+        ret_id: policies.ret || '',
+        best_offer: true,
+        // Measurements
+        m_chest: m.chest || '', m_length: m.length || '',
+        m_sleeve: m.sleeve || '', m_shoulder: m.shoulder || '',
+        m_waist: m.waist || '', m_inseam: m.inseam || '',
+      };
+
+      const resp = await fetch(`${API}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const result = await resp.json();
+
+      if (result.success) {
+        publishStatus[item.id] = { status: 'done', item_id: result.item_id, url: result.url };
+      } else {
+        publishStatus[item.id] = { status: 'error', error: result.error || 'Unknown error' };
+      }
+    } catch (err) {
+      publishStatus[item.id] = { status: 'error', error: err.message };
+    }
+    render();
+  }
+}
+
+function renderPublish(el) {
+  const toPublish = inventory.filter(i => selected.has(i.id));
+  const done = Object.values(publishStatus).filter(s => s?.status === 'done').length;
+  const errors = Object.values(publishStatus).filter(s => s?.status === 'error').length;
+  const total = toPublish.length;
+  const pct = total ? Math.round(((done + errors) / total) * 100) : 0;
+  const allDone = (done + errors) === total;
+
+  let html = `
+    <div style="font-size:15px;font-weight:700;margin-bottom:4px">Publishing to eBay...</div>
+    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--t3);margin-bottom:16px">
+      ${done} / ${total} listed${errors ? ` · ${errors} error${errors>1?'s':''}` : ''}
+    </div>
+    <div class="prog-bar"><div class="prog-fill ${allDone?'done':''}" style="width:${pct}%"></div></div>
+  `;
+
+  for (const item of toPublish) {
+    const st = publishStatus[item.id];
+    let icon = '<span style="color:var(--t3)">○</span>';
+    let detail = '';
+    if (st === 'publishing') icon = '<span class="spin" style="color:var(--amber)">◌</span>';
+    else if (st?.status === 'done') {
+      icon = '<span style="color:var(--green)">✓</span>';
+      detail = `<div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t3);margin-top:2px">
+        ID: ${st.item_id} · <a href="${st.url}" target="_blank" style="color:var(--blue)">View on eBay</a>
+      </div>`;
+    } else if (st?.status === 'error') {
+      icon = '<span style="color:var(--red)">✗</span>';
+      detail = `<div style="font-size:10px;color:var(--red);margin-top:2px">${esc(st.error)}</div>`;
+    }
+
+    html += `<div class="card" style="padding:14px 18px">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div style="font-size:18px;flex-shrink:0;margin-top:2px">${icon}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(item.title)}</div>
+          ${detail}
+        </div>
+        <div style="font-family:'DM Mono',monospace;font-weight:700;color:var(--amber);font-size:15px;flex-shrink:0">$${(item.price||0).toFixed?.(2)||'0.00'}</div>
+      </div>
+    </div>`;
+  }
+
+  if (allDone) {
+    html += `<div class="card" style="text-align:center;padding:28px;background:var(--green-d);border-color:var(--green-b)">
+      <div style="font-size:36px;margin-bottom:8px">✓</div>
+      <div style="font-size:18px;font-weight:700;color:var(--green)">All done!</div>
+      <div style="font-family:'DM Mono',monospace;font-size:12px;color:var(--t2);margin:8px 0 20px">
+        ${done} listed · ${errors} error${errors!==1?'s':''} · $${toPublish.reduce((s,i)=>s+(parseFloat(i.price)||0),0).toFixed(2)} total value
+      </div>
+      <button class="btn pri" onclick="resetApp()">⚡ Start New Batch</button>
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function resetApp() {
+  phase = 0; allPhotos = []; groups = []; measurements = {};
+  processStatus = {}; inventory = []; selected = new Set();
+  publishStatus = {}; expandedGroup = null;
+  render();
+}
+
+/* ═══════════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════════ */
+render();
+</script>
+</body></html>

@@ -312,8 +312,19 @@ async def publish_api(req: Request):
     global _last_data,_ebay_token
     body=await req.json()
     if not _ebay_token: return JSONResponse({"error":"Not connected to eBay"},status_code=401)
-    if not _last_data:  return JSONResponse({"error":"No analysis data. Run analysis first."},status_code=400)
-    data=dict(_last_data["data"])
+    # Bulk mode: images + analysis data provided in body (self-contained)
+    images_b64=body.get("images_b64",[])
+    _bulk_paths=[]
+    if images_b64:
+        for b64 in images_b64:
+            tmp=tempfile.NamedTemporaryFile(delete=False,suffix=".jpg")
+            tmp.write(base64.b64decode(b64)); tmp.close()
+            _bulk_paths.append(tmp.name)
+        data=dict(body.get("analysis_data",{}))
+    else:
+        # Single-item mode: use stored server state
+        if not _last_data:  return JSONResponse({"error":"No analysis data. Run analysis first."},status_code=400)
+        data=dict(_last_data["data"])
     if body.get("title"):       data["title"]=body["title"]
     if body.get("description"): data["description"]=body["description"]
     for k in ["brand","style_name","gender","size","size_type","color","color_std","material",
@@ -334,7 +345,7 @@ async def publish_api(req: Request):
     if body.get("care_instructions"): data["care_instructions"]=body["care_instructions"]
     token=_ebay_token
     try:
-        paths=_last_data.get("images",[])
+        paths=_bulk_paths if _bulk_paths else _last_data.get("images",[])
         pics=[u for p in paths[:12] if (u:=upload_pic(str(p),token))]
         cid={1:"1000",2:"1500",3:"2750",4:"3000",5:"3000"}.get(int(data.get("condition_score",4)),"3000")
         px="".join(f"<PictureURL>{u}</PictureURL>" for u in pics[:12])
@@ -404,10 +415,20 @@ async def publish_api(req: Request):
         ack=root.find(".//e:Ack",ns)
         if ack is not None and ack.text in ("Success","Warning"):
             iid=root.find(".//e:ItemID",ns); item_id=iid.text if iid is not None else "?"
+            for p in _bulk_paths:
+                try: os.unlink(p)
+                except: pass
             return JSONResponse({"success":True,"item_id":item_id,"url":f"https://www.ebay.com/itm/{item_id}"})
         errors="\n".join(e.text for e in root.findall(".//e:Errors/e:LongMessage",ns) if e.text)
+        for p in _bulk_paths:
+            try: os.unlink(p)
+            except: pass
         return JSONResponse({"success":False,"error":errors or "Unknown eBay error"},status_code=400)
-    except Exception as e: return JSONResponse({"success":False,"error":str(e)},status_code=500)
+    except Exception as e:
+        for p in _bulk_paths:
+            try: os.unlink(p)
+            except: pass
+        return JSONResponse({"success":False,"error":str(e)},status_code=500)
 
 # ── Image utilities ──────────────────────────────────────────────────────────
 def fix_orientation(path):
