@@ -16,7 +16,7 @@ claude = anthropic.AnthropicBedrock(
     aws_secret_key=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
     aws_region=os.environ.get("AWS_REGION", "us-east-1"),
 )
-CLAUDE_MODEL = "us.anthropic.claude-sonnet-4-20250514-v1:0"
+CLAUDE_MODEL = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 EBAY_APP_ID  = os.environ.get("EBAY_APP_ID",  "")
 EBAY_DEV_ID  = os.environ.get("EBAY_DEV_ID",  "")
@@ -77,7 +77,7 @@ _ebay_token=None  # stored server-side after OAuth
 def _preload_rembg():
     global _rembg_session,_rembg_failed,_rembg_error
     try:
-        from rembg import new_session; _rembg_session=new_session("u2net")
+        from rembg import new_session; _rembg_session=new_session("u2netp")
     except Exception as e: _rembg_failed,_rembg_error=True,str(e)
 threading.Thread(target=_preload_rembg,daemon=True).start()
 
@@ -178,12 +178,31 @@ async def ebay_refresh_api(req: Request):
     except Exception as e: return JSONResponse({"error":str(e)},status_code=500)
 
 # ── REST: remove background ──────────────────────────────────────────────────
+def _remove_bg_one(img_data):
+    """Process a single image for background removal (runs in thread pool)."""
+    from PIL import Image, ImageOps
+    from rembg import remove as rr
+    tmp=tempfile.NamedTemporaryFile(delete=False,suffix=".jpg")
+    tmp.write(img_data); tmp.close()
+    fix_orientation(tmp.name)
+    with Image.open(tmp.name) as img:
+        img=ImageOps.exif_transpose(img) or img
+        if img.mode not in ("RGB","RGBA"): img=img.convert("RGB")
+        # Downsize for faster rembg — it internally resizes anyway
+        w,h=img.size
+        if max(w,h)>1024:
+            s=1024/max(w,h); img=img.resize((int(w*s),int(h*s)),Image.LANCZOS)
+        removed=rr(img,session=_rembg_session)
+    os.unlink(tmp.name)
+    white=composite_on_white(removed)
+    buf=io.BytesIO(); white.save(buf,"JPEG",quality=90)
+    return base64.b64encode(buf.getvalue()).decode()
+
 @fapp.post("/remove-bg")
 async def remove_bg_api(images: list[UploadFile]=File(...)):
     global _rembg_session, _rembg_failed, _rembg_error
     if not images:
         return JSONResponse({"error":"No images provided"},status_code=400)
-    # Wait up to 90s for rembg session to load
     waited=0
     while _rembg_session is None and not _rembg_failed and waited<90:
         time.sleep(1); waited+=1
@@ -191,23 +210,11 @@ async def remove_bg_api(images: list[UploadFile]=File(...)):
         return JSONResponse({"error":f"Background removal unavailable: {_rembg_error}"},status_code=503)
     if _rembg_session is None:
         return JSONResponse({"error":"Background removal model still loading, try again shortly"},status_code=503)
-    from PIL import Image
-    from rembg import remove as rr
-    results=[]
     try:
-        for img_file in images[:12]:
-            data=await img_file.read()
-            tmp=tempfile.NamedTemporaryFile(delete=False,suffix=".jpg")
-            tmp.write(data); tmp.close()
-            fix_orientation(tmp.name)
-            with Image.open(tmp.name) as img:
-                if img.mode not in ("RGB","RGBA"): img=img.convert("RGB")
-                removed=rr(img,session=_rembg_session)
-            white=composite_on_white(removed)
-            buf=io.BytesIO()
-            white.save(buf,"JPEG",quality=92)
-            results.append(base64.b64encode(buf.getvalue()).decode())
-            os.unlink(tmp.name)
+        img_datas=[await f.read() for f in images[:12]]
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results=list(pool.map(_remove_bg_one, img_datas))
         return JSONResponse({"success":True,"images":results})
     except Exception as e:
         return JSONResponse({"success":False,"error":str(e)},status_code=500)
