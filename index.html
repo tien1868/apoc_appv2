@@ -1258,6 +1258,22 @@ function buildReport(raw) {
     occasion:     raw.occasion || 'Casual',
     season:       raw.season || 'All Seasons',
     lining:       raw.lining_material || '',
+    fabric_type:  raw.fabric_type || '',
+    accents:      raw.accents || [],
+    theme:        raw.theme && raw.theme !== 'null' ? raw.theme : '',
+    collar_style: raw.collar_style && raw.collar_style !== 'null' ? raw.collar_style : '',
+    cuff_style:   raw.cuff_style && raw.cuff_style !== 'null' ? raw.cuff_style : '',
+    sleeve_type:  raw.sleeve_type && raw.sleeve_type !== 'null' ? raw.sleeve_type : '',
+    rise:         raw.rise && raw.rise !== 'null' ? raw.rise : '',
+    leg_style:    raw.leg_style && raw.leg_style !== 'null' ? raw.leg_style : '',
+    jacket_length:raw.jacket_length && raw.jacket_length !== 'null' ? raw.jacket_length : '',
+    dress_length: raw.dress_length && raw.dress_length !== 'null' ? raw.dress_length : '',
+    character:    raw.character && raw.character !== 'null' ? raw.character : '',
+    graphic_print:raw.graphic_print || false,
+    handmade:     raw.handmade || false,
+    performance_activity: raw.performance_activity && raw.performance_activity !== 'null' ? raw.performance_activity : '',
+    insulation_material:  raw.insulation_material && raw.insulation_material !== 'null' ? raw.insulation_material : '',
+    garment_care: raw.garment_care && raw.garment_care !== 'null' ? raw.garment_care : '',
     features:     raw.features || [],
     care_instructions: raw.care_instructions || '',
     conf_brand:   raw.confidence === 'high' ? 90 : raw.confidence === 'medium' ? 70 : 50,
@@ -1452,6 +1468,101 @@ function buildReport(raw) {
       <div class="spec-row">
         <div class="spec-k">Lining</div>
         <div class="spec-v"><input class="spec-inp" id="sp-lining" value="${d.lining}" /></div>
+        <div class="spec-k r2">Fabric Type</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-fabrictype">
+          <option value="">—</option>
+          ${['Knit','Woven','Denim','Canvas','Jersey','Fleece','Terry','Twill','Satin','Chiffon','Lace','Mesh','Corduroy','Velvet','Flannel','Chambray'].map(f=>`<option ${f===d.fabric_type?'selected':''}>${f}</option>`).join('')}
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Accents</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-accents" value="${(d.accents||[]).join(', ')}" placeholder="Logo, Embroidered, Zipper" /></div>
+        <div class="spec-k r2">Theme</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-theme">
+          <option value="">—</option>
+          ${['Classic','Bohemian','Modern','Nautical','Outdoor','College','Western','Preppy','Streetwear','Minimalist','Retro','Athleisure'].map(t=>`<option ${t===d.theme?'selected':''}>${t}</option>`).join('')}
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Collar Style</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-collar">
+          <option value="">—</option>
+          ${['Button-Down','Spread','Mandarin','Band','Point','Hooded','Shawl','Notched Lapel','Peak Lapel','Wing'].map(c=>`<option ${c===d.collar_style?'selected':''}>${c}</option>`).join('')}
+        </select></div>
+        <div class="spec-k r2">Cuff Style</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-cuff">
+          <option value="">—</option>
+          ${['Barrel','French/Double','One Button','Ribbed','Elastic'].map(c=>`<option ${c===d.cuff_style?'selected':''}>${c}</option>`).join('')}
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Sleeve Type</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-sleevetype">
+          <option value="">—</option>
+          ${['Set-In','Raglan','Dolman','Bishop','Bell','Puff','Batwing'].map(s=>`<option ${s===d.sleeve_type?'selected':''}>${s}</option>`).join('')}
+        </select></div>
+        <div class="spec-k r2">Rise</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-rise">
+          <option value="">—</option>
+          ${['Low Rise','Mid Rise','High Rise'].map(r=>`<option ${r===d.rise?'selected':''}>${r}</option>`).join('')}
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Leg Style</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-legstyle">
+          <option value="">—</option>
+          ${['Straight','Slim','Skinny','Bootcut','Wide Leg','Tapered','Flare','Relaxed','Jogger'].map(l=>`<option ${l===d.leg_style?'selected':''}>${l}</option>`).join('')}
+        </select></div>
+        <div class="spec-k r2">Jacket Length</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-jacketlength">
+          <option value="">—</option>
+          ${['Short','Hip Length','Mid-Thigh','Knee Length','Long'].map(j=>`<option ${j===d.jacket_length?'selected':''}>${j}</option>`).join('')}
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Dress Length</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-dresslength">
+          <option value="">—</option>
+          ${['Short/Mini','Knee Length','Midi','Maxi/Full Length','Hi-Low'].map(dl=>`<option ${dl===d.dress_length?'selected':''}>${dl}</option>`).join('')}
+        </select></div>
+        <div class="spec-k r2">Character</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-character" value="${d.character}" placeholder="e.g. Mickey Mouse, Spider-Man" /></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Performance</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-performance">
+          <option value="">—</option>
+          ${['Golf','Hiking','Running','Yoga','Training','Cycling','Fishing','Skiing','Tennis','Swimming'].map(p=>`<option ${p===d.performance_activity?'selected':''}>${p}</option>`).join('')}
+        </select></div>
+        <div class="spec-k r2">Insulation</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-insulation">
+          <option value="">—</option>
+          ${['Down','Synthetic','Thinsulate','PrimaLoft','Fleece Lined'].map(i=>`<option ${i===d.insulation_material?'selected':''}>${i}</option>`).join('')}
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Graphic Print</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-graphic">
+          <option ${!d.graphic_print?'selected':''}>No</option>
+          <option ${d.graphic_print?'selected':''}>Yes</option>
+        </select></div>
+        <div class="spec-k r2">Handmade</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-handmade">
+          <option ${!d.handmade?'selected':''}>No</option>
+          <option ${d.handmade?'selected':''}>Yes</option>
+        </select></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Garment Care</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-care" value="${d.garment_care}" placeholder="Machine wash cold, Dry clean only" /></div>
         <div class="spec-k r2">Category ID</div>
         <div class="spec-v"><input class="spec-inp" id="sp-catid" value="${d.cat_id}" /></div>
       </div>
@@ -1559,6 +1670,22 @@ async function publish() {
       occasion:    document.getElementById('sp-occasion')?.value || '',
       season:      document.getElementById('sp-season')?.value || '',
       lining_material: document.getElementById('sp-lining')?.value || '',
+      fabric_type: document.getElementById('sp-fabrictype')?.value || '',
+      accents:     (document.getElementById('sp-accents')?.value || '').split(',').map(s=>s.trim()).filter(Boolean),
+      theme:       document.getElementById('sp-theme')?.value || '',
+      collar_style:document.getElementById('sp-collar')?.value || '',
+      cuff_style:  document.getElementById('sp-cuff')?.value || '',
+      sleeve_type: document.getElementById('sp-sleevetype')?.value || '',
+      rise:        document.getElementById('sp-rise')?.value || '',
+      leg_style:   document.getElementById('sp-legstyle')?.value || '',
+      jacket_length:document.getElementById('sp-jacketlength')?.value || '',
+      dress_length:document.getElementById('sp-dresslength')?.value || '',
+      character:   document.getElementById('sp-character')?.value || '',
+      graphic_print: document.getElementById('sp-graphic')?.value === 'Yes',
+      handmade:    document.getElementById('sp-handmade')?.value === 'Yes',
+      performance_activity: document.getElementById('sp-performance')?.value || '',
+      insulation_material: document.getElementById('sp-insulation')?.value || '',
+      garment_care:document.getElementById('sp-care')?.value || '',
       sku:         document.getElementById('sp-sku')?.value || genSku(analysisData),
       features:    (document.getElementById('features-area')?.value || '').split(',').map(s=>s.trim()).filter(Boolean),
       care_instructions: document.getElementById('care-area')?.value || '',

@@ -55,7 +55,7 @@ TAG READING PRIORITY — read tags FIRST before analyzing the garment:
 9. If NO size tag is visible in any photo, set size to "" and confidence to "low".
 
 Return this JSON structure:
-{"title":"SEO title under 80 chars — Brand + Style Name + Type + Size + Color","brand":"exact brand from tag","style_name":"specific model/product line name if identifiable (e.g. Dickey, Atom SL, Better Sweater) or null","sub_brand":null,"category":"Men > Sweaters > Cardigan","gender":"Men","size":"exact tag text","color":"Black","material":"60% Cotton 40% Polyester","style_details":["cable knit","ribbed cuffs","button front"],"sleeve_length":"Long Sleeve","neckline":"Crew Neck","pattern":"Solid","closure":"Button","fit":"Regular Fit","occasion":"Casual","season":"Fall/Winter","lining_material":null,"condition_score":4,"condition_label":"Good","condition_notes":"Light pilling on cuffs, minor fading at collar. No holes, stains, or structural damage.","defects_detected":["light pilling on cuffs","minor collar fading"],"description":"Detailed 4-6 sentence resale description. Describe the garment, its key features, material feel, condition, and who it suits. Write as a professional eBay seller — informative, accurate, and appealing.","features":["Cable knit texture throughout","Ribbed hem and cuffs","Genuine horn buttons","Reinforced shoulder seams"],"care_instructions":"Machine wash cold, tumble dry low","origin":"China","suggested_price_low":28,"suggested_price_high":45,"price_reasoning":"market reasoning with style name pricing if applicable","vintage":false,"vintage_era":null,"tags_present":false,"confidence":"high"}
+{"title":"SEO title under 80 chars — Brand + Style Name + Type + Size + Color","brand":"exact brand from tag","style_name":"specific model/product line name if identifiable (e.g. Dickey, Atom SL, Better Sweater) or null","sub_brand":null,"category":"Men > Sweaters > Cardigan","gender":"Men","size":"exact tag text","color":"Black","material":"60% Cotton 40% Polyester","style_details":["cable knit","ribbed cuffs","button front"],"sleeve_length":"Long Sleeve","neckline":"Crew Neck","pattern":"Solid","closure":"Button","fit":"Regular Fit","occasion":"Casual","season":"Fall/Winter","lining_material":null,"fabric_type":"Knit","accents":["Logo"],"theme":"Classic","collar_style":null,"cuff_style":null,"sleeve_type":null,"rise":null,"leg_style":null,"jacket_length":null,"dress_length":null,"character":null,"graphic_print":false,"handmade":false,"performance_activity":null,"insulation_material":null,"garment_care":"Machine wash cold","condition_score":4,"condition_label":"Good","condition_notes":"Light pilling on cuffs, minor fading at collar. No holes, stains, or structural damage.","defects_detected":["light pilling on cuffs","minor collar fading"],"description":"Detailed 4-6 sentence resale description. Describe the garment, its key features, material feel, condition, and who it suits. Write as a professional eBay seller — informative, accurate, and appealing.","features":["Cable knit texture throughout","Ribbed hem and cuffs","Genuine horn buttons","Reinforced shoulder seams"],"care_instructions":"Machine wash cold, tumble dry low","origin":"China","suggested_price_low":28,"suggested_price_high":45,"price_reasoning":"market reasoning with style name pricing if applicable","vintage":false,"vintage_era":null,"tags_present":false,"confidence":"high"}
 
 STYLE NAME RULES: This is the specific product line, model, or collection name — NOT generic descriptors. Examples of style names: "Dickey Jacket" (Veronica Beard), "Atom SL Hoody" (Arc'teryx), "Better Sweater" (Patagonia), "Ashby" (Barbour), "Expedition Parka" (Canada Goose), "Storm System" (Loro Piana), "Icon Trucker" (Levi's). If no specific style/model name is identifiable, set to null. Include the style name in the title and factor it into pricing — named styles typically command higher prices.
 
@@ -68,7 +68,22 @@ pattern must be one of: Solid, Striped, Plaid, Paisley, Floral, Geometric, Abstr
 closure must be one of: Button, Zip, Pull On, Snap, Hook & Eye, Tie, Buckle, Velcro, None
 fit must be one of: Regular Fit, Slim Fit, Relaxed, Oversized, Athletic Fit, Classic, Tailored, Loose
 occasion must be one of: Casual, Formal, Business, Active/Athletic, Special Occasion, Outdoor, Everyday, Lounge
-season must be one of: All Seasons, Spring, Summer, Fall, Winter, Spring/Summer, Fall/Winter"""
+season must be one of: All Seasons, Spring, Summer, Fall, Winter, Spring/Summer, Fall/Winter
+fabric_type must be one of: Knit, Woven, Denim, Canvas, Jersey, Fleece, Terry, Twill, Satin, Chiffon, Lace, Mesh, Corduroy, Velvet, Flannel, Chambray, or null
+accents: array of visible accents from: Logo, Embroidered, Zipper, Button, Patched, Rhinestone, Studded, Lace, Ruffle, Fringe, Sequined, Applique, Beaded, Monogram. Empty array [] if none.
+theme must be one of: Classic, Bohemian, Modern, Nautical, Outdoor, College, Western, Hippie, Preppy, Streetwear, Minimalist, Retro, Grunge, Athleisure, or null
+collar_style: Button-Down, Spread, Mandarin, Band, Point, Hooded, Shawl, Notched Lapel, Peak Lapel, Wing, or null. Only for shirts/jackets.
+cuff_style: Barrel, French/Double, One Button, Ribbed, Elastic, or null. Only for dress shirts.
+sleeve_type: Set-In, Raglan, Dolman, Bishop, Bell, Puff, Batwing, or null. Only if distinctive.
+rise: Low Rise, Mid Rise, High Rise, or null. Only for pants/jeans/shorts.
+leg_style: Straight, Slim, Skinny, Bootcut, Wide Leg, Tapered, Flare, Relaxed, Jogger, or null. Only for pants/jeans.
+jacket_length: Short, Hip Length, Mid-Thigh, Knee Length, Long, or null. Only for jackets/coats.
+dress_length: Short/Mini, Knee Length, Midi, Maxi/Full Length, Hi-Low, or null. Only for dresses/skirts.
+character: Licensed character name if visible (Disney, Marvel, etc.) or null.
+graphic_print: true only if garment has a graphic/screen print design.
+performance_activity: Golf, Hiking, Running, Yoga, Training, Cycling, Fishing, Skiing, or null. Only for activewear/performance garments.
+insulation_material: Down, Synthetic, Thinsulate, PrimaLoft, Fleece Lined, or null. Only for insulated outerwear.
+garment_care: Read from care label. e.g. "Machine wash cold" or "Dry clean only". null if not visible."""
 
 _pending_code={"code":None,"error":None}
 _last_data={}
@@ -303,11 +318,17 @@ async def publish_api(req: Request):
     if body.get("description"): data["description"]=body["description"]
     for k in ["brand","style_name","gender","size","size_type","color","color_std","material",
               "sleeve_length","neckline","category","origin","pattern","closure",
-              "fit","occasion","season","lining_material"]:
+              "fit","occasion","season","lining_material","fabric_type","theme",
+              "collar_style","cuff_style","sleeve_type","rise","leg_style",
+              "jacket_length","dress_length","character","performance_activity",
+              "insulation_material","garment_care","m_chest","m_waist","m_inseam"]:
         if body.get(k): data[k]=body[k]
     if "style_details" in body: data["style_details"]=body["style_details"]
+    if "accents" in body: data["accents"]=body["accents"]
     if "vintage" in body: data["vintage"]=body["vintage"]
     if "tags_present" in body: data["tags_present"]=body["tags_present"]
+    if "graphic_print" in body: data["graphic_print"]=body["graphic_print"]
+    if "handmade" in body: data["handmade"]=body["handmade"]
     if body.get("cat_id"): data["cat_id"]=body["cat_id"]
     if body.get("features"): data["features"]=body["features"]
     if body.get("care_instructions"): data["care_instructions"]=body["care_instructions"]
@@ -547,6 +568,35 @@ def build_specifics(data):
     if lining and lining not in ("null",None,""): specs.append(("Lining Material",lining))
     era=data.get("vintage_era")
     if era and era not in ("null",None,""): specs.append(("Decade",str(era)))
+    # Additional eBay recommended specifics
+    _opt=[("Fabric Type","fabric_type"),("Theme","theme"),("Collar Style","collar_style"),
+          ("Cuff Style","cuff_style"),("Sleeve Type","sleeve_type"),("Rise","rise"),
+          ("Leg Style","leg_style"),("Jacket/Coat Length","jacket_length"),
+          ("Dress Length","dress_length"),("Character","character"),
+          ("Performance/Activity","performance_activity"),
+          ("Insulation Material","insulation_material"),("Garment Care","garment_care")]
+    for name,key in _opt:
+        v=data.get(key,"")
+        if v and v not in ("null",None,"","None",False): specs.append((name,str(v)))
+    # Accents (multi-value)
+    accents=data.get("accents",[])
+    if accents and isinstance(accents,list):
+        for a in accents:
+            if a and a not in ("null",None,""): specs.append(("Accents",str(a)))
+    # Features (multi-value)
+    feats=data.get("features",[])
+    if feats and isinstance(feats,list):
+        for f in feats:
+            if f and f not in ("null",None,""): specs.append(("Features",str(f)))
+    if data.get("graphic_print"): specs.append(("Graphic Print","Yes"))
+    if data.get("handmade"): specs.append(("Handmade","Yes"))
+    # Measurements as item specifics (from publish body)
+    m_chest=data.get("m_chest",""); m_waist=data.get("m_waist",""); m_inseam=data.get("m_inseam","")
+    if m_chest: specs.append(("Chest Size",f"{m_chest} in"))
+    if m_waist: specs.append(("Waist Size",f"{m_waist} in"))
+    if m_inseam: specs.append(("Inseam",f"{m_inseam} in"))
+    origin=data.get("origin","")
+    if origin and origin not in ("null",None,""): specs.append(("Country/Region of Manufacture",origin))
     return "".join(f"<NameValueList><Name>{n}</Name><Value>{v}</Value></NameValueList>" for n,v in specs if v)
 
 def upload_pic(path,token):
