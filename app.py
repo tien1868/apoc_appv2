@@ -226,10 +226,14 @@ async def analyze_api(images: list[UploadFile]=File(...), gender: str=Form("")):
             fix_orientation(tmp.name)
             paths.append(tmp.name)
         gender_hint=f" The user has indicated this is a {gender} garment." if gender else ""
+        # Compress all images in parallel
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            b64_images=list(pool.map(encode_b64, paths))
         content=[{"type":"text","text":f"Analyze these garment photos. Carefully read ALL visible tags and labels for brand, size, material, and origin.{gender_hint} Return ONLY valid JSON."}]
-        for p in paths:
-            content.append({"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":encode_b64(p)}})
-        resp=claude.messages.create(model=CLAUDE_MODEL,max_tokens=2000,system=SYSTEM_PROMPT,
+        for b64 in b64_images:
+            content.append({"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":b64}})
+        resp=claude.messages.create(model=CLAUDE_MODEL,max_tokens=1500,system=SYSTEM_PROMPT,
                                     messages=[{"role":"user","content":content}])
         raw=resp.content[0].text.strip()
         raw=re.sub(r"^```(?:json)?\s*","",raw); raw=re.sub(r"\s*```$","",raw)
@@ -380,16 +384,15 @@ def composite_on_white(img):
     from PIL import Image; bg=Image.new("RGB",img.size,(255,255,255)); bg.paste(img,mask=img.split()[3] if img.mode=="RGBA" else None); return bg
 
 def compress_image(path):
-    from PIL import Image, ImageOps
+    from PIL import Image
     with Image.open(path) as img:
-        img = ImageOps.exif_transpose(img)
+        # EXIF already applied by fix_orientation() — skip redundant transpose
         if img.mode=="RGBA": img=composite_on_white(img)
         elif img.mode!="RGB": img=img.convert("RGB")
         w,h=img.size
-        # Keep high res for tag readability — Claude handles up to ~4MP well
-        if max(w,h)>3200: s=3200/max(w,h); img=img.resize((int(w*s),int(h*s)),Image.LANCZOS)
-        buf=io.BytesIO(); img.save(buf,"JPEG",quality=92,optimize=True)
-        if buf.tell()>5_000_000: buf=io.BytesIO(); img.save(buf,"JPEG",quality=80,optimize=True)
+        if max(w,h)>1600: s=1600/max(w,h); img=img.resize((int(w*s),int(h*s)),Image.LANCZOS)
+        buf=io.BytesIO(); img.save(buf,"JPEG",quality=85,optimize=True)
+        if buf.tell()>3_000_000: buf=io.BytesIO(); img.save(buf,"JPEG",quality=72,optimize=True)
         return buf.getvalue()
 
 def encode_b64(path): return base64.standard_b64encode(compress_image(path)).decode()

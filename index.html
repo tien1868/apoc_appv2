@@ -749,7 +749,29 @@ const dz = document.getElementById('dz');
 dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('over'); });
 dz.addEventListener('dragleave', () => dz.classList.remove('over'));
 dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('over'); addFiles(e.dataTransfer.files); });
-function addFiles(f) { Array.from(f).forEach(x => { if (files.length < 12) files.push(x); }); renderDZ(); }
+async function addFiles(f) {
+  for (const x of Array.from(f)) {
+    if (files.length >= 12) break;
+    try {
+      const fixed = await normalizeOrientation(x);
+      files.push(fixed);
+    } catch(e) { files.push(x); }
+  }
+  renderDZ();
+}
+function normalizeOrientation(file) {
+  return new Promise((resolve) => {
+    createImageBitmap(file).then(bmp => {
+      const cvs = document.createElement('canvas');
+      cvs.width = bmp.width; cvs.height = bmp.height;
+      cvs.getContext('2d').drawImage(bmp, 0, 0);
+      cvs.toBlob(blob => {
+        if (!blob) { resolve(file); return; }
+        resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: file.lastModified }));
+      }, 'image/jpeg', 0.92);
+    }).catch(() => resolve(file));
+  });
+}
 function renderDZ() {
   if (!files.length) {
     dz.className = 'drop-zone';
@@ -831,7 +853,7 @@ function openEditor(index) {
     bar.appendChild(mkBtn('↺ Rotate Left', '', () => { state.rotation = (state.rotation + 270) % 360; state.crop = null; setupCanvas(cvs, state); drawEditor(cvs, state); }));
     bar.appendChild(mkBtn('Rotate Right ↻', '', () => { state.rotation = (state.rotation + 90) % 360; state.crop = null; setupCanvas(cvs, state); drawEditor(cvs, state); }));
     bar.appendChild(mkBtn('Reset Crop', '', () => { state.crop = null; drawEditor(cvs, state); }));
-    bar.appendChild(mkBtn('Apply', 'pri', () => { applyEdit(state, index); modal.remove(); }));
+    bar.appendChild(mkBtn('Apply', 'pri', () => { applyEdit(state, index, modal); }));
     bar.appendChild(mkBtn('Cancel', '', () => { modal.remove(); }));
     modal.appendChild(bar);
 
@@ -893,7 +915,7 @@ function drawEditor(cvs, state) {
   }
 }
 
-function applyEdit(state, index) {
+function applyEdit(state, index, modal) {
   const off = document.createElement('canvas');
   const img = state.img;
   const swap = state.rotation % 180 !== 0;
@@ -924,10 +946,11 @@ function applyEdit(state, index) {
   }
 
   off.toBlob((blob) => {
-    if (!blob) return;
+    if (!blob) { if (modal) modal.remove(); return; }
     const newFile = new File([blob], files[index]?.name || `photo_${index + 1}.jpg`, { type: 'image/jpeg' });
     files[index] = newFile;
     renderDZ();
+    if (modal) modal.remove();
   }, 'image/jpeg', 0.92);
 }
 
