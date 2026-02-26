@@ -47,14 +47,17 @@ TAG READING PRIORITY — read tags FIRST before analyzing the garment:
 1. Look at EVERY image for tags/labels (inside collar, side seam, hem, waistband, care labels)
 2. SIZE: Read the EXACT text printed on the size tag. Look for S/M/L/XL/XXL, numeric sizes (32, 34, 40), or alpha-numeric (US 10, EU 48). Report EXACTLY what the tag says — never guess from garment appearance.
 3. BRAND: Read the EXACT brand name from the main label. Check collar labels, hem tags, button engravings, zipper pulls.
-4. MATERIAL: Read the EXACT fabric composition from the care/content label (e.g. "60% Cotton 40% Polyester"). Report the full composition.
-5. ORIGIN: Read "Made in ___" from the care label if visible.
-6. CARE: Read care instructions from care label (e.g. "Machine wash cold", "Dry clean only").
-7. If a tag is partially visible, blurry, or folded, report what you CAN read and note uncertainty.
-8. If NO size tag is visible in any photo, set size to "" and confidence to "low".
+4. STYLE NAME / MODEL: Read the specific product line, model, or style name from labels. This is CRITICAL for pricing. Examples: "Dickey" (Veronica Beard), "Atom SL" (Arc'teryx), "Storm System" (Loro Piana), "Patagonia Better Sweater", "Barbour Ashby", "Canada Goose Expedition". Look for secondary labels, interior tags, style numbers, and any text identifying the specific model. If you recognize the style from the garment's distinctive design even without a label, include it.
+5. MATERIAL: Read the EXACT fabric composition from the care/content label (e.g. "60% Cotton 40% Polyester"). Report the full composition.
+6. ORIGIN: Read "Made in ___" from the care label if visible.
+7. CARE: Read care instructions from care label (e.g. "Machine wash cold", "Dry clean only").
+8. If a tag is partially visible, blurry, or folded, report what you CAN read and note uncertainty.
+9. If NO size tag is visible in any photo, set size to "" and confidence to "low".
 
 Return this JSON structure:
-{"title":"SEO title under 80 chars — Brand + Key Details + Size + Color","brand":"exact brand from tag","sub_brand":null,"category":"Men > Sweaters > Cardigan","gender":"Men","size":"exact tag text","color":"Black","material":"60% Cotton 40% Polyester","style_details":["cable knit","ribbed cuffs","button front"],"sleeve_length":"Long Sleeve","neckline":"Crew Neck","pattern":"Solid","closure":"Button","fit":"Regular Fit","occasion":"Casual","season":"Fall/Winter","lining_material":null,"condition_score":4,"condition_label":"Good","condition_notes":"Light pilling on cuffs, minor fading at collar. No holes, stains, or structural damage.","defects_detected":["light pilling on cuffs","minor collar fading"],"description":"Detailed 4-6 sentence resale description. Describe the garment, its key features, material feel, condition, and who it suits. Write as a professional eBay seller — informative, accurate, and appealing.","features":["Cable knit texture throughout","Ribbed hem and cuffs","Genuine horn buttons","Reinforced shoulder seams"],"care_instructions":"Machine wash cold, tumble dry low","origin":"China","suggested_price_low":28,"suggested_price_high":45,"price_reasoning":"market reasoning","vintage":false,"vintage_era":null,"tags_present":false,"confidence":"high"}
+{"title":"SEO title under 80 chars — Brand + Style Name + Type + Size + Color","brand":"exact brand from tag","style_name":"specific model/product line name if identifiable (e.g. Dickey, Atom SL, Better Sweater) or null","sub_brand":null,"category":"Men > Sweaters > Cardigan","gender":"Men","size":"exact tag text","color":"Black","material":"60% Cotton 40% Polyester","style_details":["cable knit","ribbed cuffs","button front"],"sleeve_length":"Long Sleeve","neckline":"Crew Neck","pattern":"Solid","closure":"Button","fit":"Regular Fit","occasion":"Casual","season":"Fall/Winter","lining_material":null,"condition_score":4,"condition_label":"Good","condition_notes":"Light pilling on cuffs, minor fading at collar. No holes, stains, or structural damage.","defects_detected":["light pilling on cuffs","minor collar fading"],"description":"Detailed 4-6 sentence resale description. Describe the garment, its key features, material feel, condition, and who it suits. Write as a professional eBay seller — informative, accurate, and appealing.","features":["Cable knit texture throughout","Ribbed hem and cuffs","Genuine horn buttons","Reinforced shoulder seams"],"care_instructions":"Machine wash cold, tumble dry low","origin":"China","suggested_price_low":28,"suggested_price_high":45,"price_reasoning":"market reasoning with style name pricing if applicable","vintage":false,"vintage_era":null,"tags_present":false,"confidence":"high"}
+
+STYLE NAME RULES: This is the specific product line, model, or collection name — NOT generic descriptors. Examples of style names: "Dickey Jacket" (Veronica Beard), "Atom SL Hoody" (Arc'teryx), "Better Sweater" (Patagonia), "Ashby" (Barbour), "Expedition Parka" (Canada Goose), "Storm System" (Loro Piana), "Icon Trucker" (Levi's). If no specific style/model name is identifiable, set to null. Include the style name in the title and factor it into pricing — named styles typically command higher prices.
 
 DESCRIPTION RULES: Write 4-6 sentences. Start with brand + garment type + key selling point. Mention material, fit, notable design details. State condition honestly. End with a styling suggestion or who it's ideal for.
 FEATURES: List 3-6 notable design/construction features visible in photos (e.g. "Reinforced stitching", "Genuine leather trim", "Lined interior").
@@ -188,19 +191,21 @@ def _remove_bg_one(img_data):
     with Image.open(tmp.name) as img:
         img=ImageOps.exif_transpose(img) or img
         if img.mode not in ("RGB","RGBA"): img=img.convert("RGB")
-        # Downsize for faster rembg — it internally resizes anyway
         w,h=img.size
-        if max(w,h)>1024:
-            s=1024/max(w,h); img=img.resize((int(w*s),int(h*s)),Image.LANCZOS)
+        if max(w,h)>1600:
+            s=1600/max(w,h); img=img.resize((int(w*s),int(h*s)),Image.LANCZOS)
         removed=rr(img,session=_rembg_session)
     os.unlink(tmp.name)
     white=composite_on_white(removed)
+    # Save to disk for publish flow
+    out=tempfile.NamedTemporaryFile(delete=False,suffix=".jpg")
+    white.save(out,"JPEG",quality=90); out.close()
     buf=io.BytesIO(); white.save(buf,"JPEG",quality=90)
-    return base64.b64encode(buf.getvalue()).decode()
+    return {"b64": base64.b64encode(buf.getvalue()).decode(), "path": out.name}
 
 @fapp.post("/remove-bg")
 async def remove_bg_api(images: list[UploadFile]=File(...)):
-    global _rembg_session, _rembg_failed, _rembg_error
+    global _rembg_session, _rembg_failed, _rembg_error, _last_data
     if not images:
         return JSONResponse({"error":"No images provided"},status_code=400)
     waited=0
@@ -215,7 +220,17 @@ async def remove_bg_api(images: list[UploadFile]=File(...)):
         from concurrent.futures import ThreadPoolExecutor
         with ThreadPoolExecutor(max_workers=2) as pool:
             results=list(pool.map(_remove_bg_one, img_datas))
-        return JSONResponse({"success":True,"images":results})
+        # Update _last_data with BG-removed images so publish uses them
+        new_paths=[r["path"] for r in results]
+        if _last_data and "images" in _last_data:
+            old_paths=_last_data["images"]
+            _last_data["images"]=new_paths
+            for p in old_paths:
+                try: os.unlink(p)
+                except: pass
+        else:
+            _last_data={"data":_last_data.get("data",{}),"images":new_paths}
+        return JSONResponse({"success":True,"images":[r["b64"] for r in results]})
     except Exception as e:
         return JSONResponse({"success":False,"error":str(e)},status_code=500)
 
@@ -286,7 +301,7 @@ async def publish_api(req: Request):
     data=dict(_last_data["data"])
     if body.get("title"):       data["title"]=body["title"]
     if body.get("description"): data["description"]=body["description"]
-    for k in ["brand","gender","size","size_type","color","color_std","material",
+    for k in ["brand","style_name","gender","size","size_type","color","color_std","material",
               "sleeve_length","neckline","category","origin","pattern","closure",
               "fit","occasion","season","lining_material"]:
         if body.get(k): data[k]=body[k]
@@ -410,6 +425,7 @@ def build_description_html(data, body):
     import html as h
     title = h.escape(data.get("title", ""))
     brand = h.escape(data.get("brand", "Unknown"))
+    style_name = h.escape(data.get("style_name") or "")
     desc = h.escape(data.get("description", ""))
     material = h.escape(data.get("material", ""))
     color = h.escape(data.get("color", ""))
@@ -450,7 +466,7 @@ def build_description_html(data, body):
         measurements_html = f'<h3 style="font-size:15px;color:#1a1a1a;margin:18px 0 8px;border-bottom:1px solid #e0e0e0;padding-bottom:6px">Measurements (approx.)</h3><table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:12px">{rows}</table>'
     # Build details table
     detail_rows = ""
-    for label, val in [("Brand", brand), ("Size", size), ("Color", color), ("Material", material), ("Pattern", pattern), ("Fit", fit), ("Sleeve Length", sleeve), ("Neckline", neckline), ("Closure", closure), ("Season", season), ("Lining", lining), ("Made in", origin)]:
+    for label, val in [("Brand", brand), ("Style/Model", style_name), ("Size", size), ("Color", color), ("Material", material), ("Pattern", pattern), ("Fit", fit), ("Sleeve Length", sleeve), ("Neckline", neckline), ("Closure", closure), ("Season", season), ("Lining", lining), ("Made in", origin)]:
         if val and val.lower() not in ("none", "null", ""):
             detail_rows += f'<tr><td style="padding:6px 12px;border-bottom:1px solid #eee;font-weight:600;color:#555;width:40%">{label}</td><td style="padding:6px 12px;border-bottom:1px solid #eee;color:#333">{val}</td></tr>'
     # Condition section

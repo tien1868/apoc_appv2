@@ -1061,10 +1061,13 @@ function buildSeoTitle(d) {
   // 1. Brand (always first — highest search weight)
   if (d.brand) parts.push(d.brand);
 
-  // 2. Sub-brand / line (e.g. "Storm System") — high brand search value
+  // 2. Style name / model (e.g. "Dickey", "Atom SL") — critical for pricing + search
+  if (d.style_name) parts.push(d.style_name);
+
+  // 3. Sub-brand / line (e.g. "Storm System") — high brand search value
   if (d.sub_brand && d.sub_brand !== 'null') parts.push(d.sub_brand);
 
-  // 3. Material — luxury buyers search by material
+  // 4. Material — luxury buyers search by material
   if (d.material && !parts.join(' ').toLowerCase().includes(d.material.toLowerCase()))
     parts.push(d.material);
 
@@ -1221,6 +1224,7 @@ function buildReport(raw) {
   // Map API response fields to UI fields
   const mapped = {
     brand:        raw.brand || '',
+    style_name:   raw.style_name && raw.style_name !== 'null' ? raw.style_name : '',
     sub_brand:    raw.sub_brand && raw.sub_brand !== 'null' ? raw.sub_brand : null,
     cat:          raw.category || '',
     cat_id:       raw.cat_id || '',
@@ -1263,7 +1267,7 @@ function buildReport(raw) {
   };
 
   const title = raw.title || buildSeoTitle(mapped);
-  const keywords = [mapped.brand, mapped.sub_brand, mapped.material_full, mapped.color, mapped.origin, mapped.gender+"'s", mapped.size, ...(mapped.style||[])].filter(Boolean);
+  const keywords = [mapped.brand, mapped.style_name, mapped.sub_brand, mapped.material_full, mapped.color, mapped.origin, mapped.gender+"'s", mapped.size, ...(mapped.style||[])].filter(Boolean);
 
   analysisData = { ...mapped, title, keywords };
 
@@ -1337,39 +1341,39 @@ function buildReport(raw) {
       <div class="spec-row">
         <div class="spec-k">Brand</div>
         <div class="spec-v"><input class="spec-inp" id="sp-brand" value="${d.brand}${d.sub_brand?' / '+d.sub_brand:''}" /></div>
-        <div class="spec-k r2">Department</div>
+        <div class="spec-k r2">Style/Model</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-stylename" value="${d.style_name}" placeholder="e.g. Dickey, Atom SL" /></div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Department</div>
         <div class="spec-v"><select class="spec-sel" id="sp-dept">
           <option ${d.dept==='Men'?'selected':''}>Men</option>
           <option ${d.dept==='Women'?'selected':''}>Women</option>
           <option ${d.dept==='Unisex'?'selected':''}>Unisex</option>
           <option>Boys</option><option>Girls</option>
         </select></div>
+        <div class="spec-k r2">Size</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-size" value="${d.size}" /></div>
       </div>
 
       <div class="spec-row">
-        <div class="spec-k">Size</div>
-        <div class="spec-v"><input class="spec-inp" id="sp-size" value="${d.size}" /></div>
-        <div class="spec-k r2">Size Type</div>
+        <div class="spec-k">Size Type</div>
         <div class="spec-v"><select class="spec-sel" id="sp-sizetype">
           <option ${d.size_type==='Regular'?'selected':''}>Regular</option>
           <option ${d.size_type==='Plus'?'selected':''}>Plus</option>
           <option ${d.size_type==='Petite'?'selected':''}>Petite</option>
           <option ${d.size_type==='Big &amp; Tall'?'selected':''}>Big &amp; Tall</option>
         </select></div>
+        <div class="spec-k r2">Color</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-color" value="${d.color}" /></div>
       </div>
 
       <div class="spec-row">
-        <div class="spec-k">Color</div>
-        <div class="spec-v"><input class="spec-inp" id="sp-color" value="${d.color}" /></div>
-        <div class="spec-k r2">Color Map</div>
+        <div class="spec-k">Color Map</div>
         <div class="spec-v"><select class="spec-sel" id="sp-colormap">
           ${['Black','White','Gray','Navy','Blue','Red','Green','Brown','Beige','Cream','Pink','Purple','Multicolor','Yellow','Orange'].map(c=>`<option ${c===d.color_std?'selected':''}>${c}</option>`).join('')}
         </select></div>
-      </div>
-
-      <div class="spec-row">
-        <div class="spec-k">Material</div>
-        <div class="spec-v"><input class="spec-inp" id="sp-material" value="${d.material_full}" /></div>
         <div class="spec-k r2">Material Map</div>
         <div class="spec-v"><select class="spec-sel" id="sp-materialmap">
           ${['Cotton','Denim','Wool','Leather','Polyester','Nylon','Silk','Linen','Cashmere','Fleece','Velvet','Corduroy','Tweed','Flannel','Suede','Acrylic','Rayon','Viscose'].map(m=>`<option ${m===d.material?'selected':''}>${m}</option>`).join('')}
@@ -1377,79 +1381,86 @@ function buildReport(raw) {
       </div>
 
       <div class="spec-row">
-        <div class="spec-k">Sleeve Length</div>
+        <div class="spec-k">Material</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-material" value="${d.material_full}" /></div>
+        <div class="spec-k r2">Sleeve Length</div>
         <div class="spec-v"><select class="spec-sel" id="sp-sleeve">
           ${['Long Sleeve','Short Sleeve','3/4 Sleeve','Sleeveless','Cap Sleeve'].map(s=>`<option ${s===d.sleeve?'selected':''}>${s}</option>`).join('')}
         </select></div>
-        <div class="spec-k r2">Neckline</div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Neckline</div>
         <div class="spec-v"><select class="spec-sel" id="sp-neckline">
           ${['Crew Neck','V-Neck','Round Neck','Scoop Neck','Turtleneck','Mock Neck','Collared','Hooded','Polo','Henley','Boat Neck','Cowl Neck','Square Neck','Off Shoulder','Strapless'].map(n=>`<option ${n===d.neckline?'selected':''}>${n}</option>`).join('')}
         </select></div>
-      </div>
-
-      <div class="spec-row">
-        <div class="spec-k">Style</div>
+        <div class="spec-k r2">Style</div>
         <div class="spec-v"><input class="spec-inp" id="sp-style" value="${(d.style||[]).join(', ')}" /></div>
-        <div class="spec-k r2">Garment Type</div>
-        <div class="spec-v"><input class="spec-inp" id="sp-type" value="${d.cat?d.cat.split('>').pop().trim():''}" /></div>
       </div>
 
       <div class="spec-row">
-        <div class="spec-k">Country/Region</div>
+        <div class="spec-k">Garment Type</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-type" value="${d.cat?d.cat.split('>').pop().trim():''}" /></div>
+        <div class="spec-k r2">Country/Region</div>
         <div class="spec-v"><input class="spec-inp" id="sp-origin" value="${d.origin||''}" /></div>
-        <div class="spec-k r2">Vintage</div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Vintage</div>
         <div class="spec-v"><select class="spec-sel" id="sp-vintage">
           <option ${!d.vintage?'selected':''}>No</option>
           <option ${d.vintage?'selected':''}>Yes</option>
         </select></div>
-      </div>
-
-      <div class="spec-row">
-        <div class="spec-k">New w/ Tags</div>
+        <div class="spec-k r2">New w/ Tags</div>
         <div class="spec-v"><select class="spec-sel" id="sp-nwt">
           <option ${!d.nwt?'selected':''}>No</option>
           <option ${d.nwt?'selected':''}>Yes</option>
         </select></div>
-        <div class="spec-k r2">Era</div>
-        <div class="spec-v"><input class="spec-inp" id="sp-era" value="${d.vintage?d.era:'Contemporary'}" /></div>
       </div>
 
       <div class="spec-row">
-        <div class="spec-k">Pattern</div>
+        <div class="spec-k">Era</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-era" value="${d.vintage?d.era:'Contemporary'}" /></div>
+        <div class="spec-k r2">Pattern</div>
         <div class="spec-v"><select class="spec-sel" id="sp-pattern">
           ${['Solid','Striped','Plaid','Paisley','Floral','Geometric','Abstract','Animal Print','Camouflage','Polka Dot','Colorblock','Herringbone','Houndstooth','Checkered/Gingham'].map(p=>`<option ${p===d.pattern?'selected':''}>${p}</option>`).join('')}
         </select></div>
-        <div class="spec-k r2">Closure</div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Closure</div>
         <div class="spec-v"><select class="spec-sel" id="sp-closure">
           ${['Button','Zip','Pull On','Snap','Hook & Eye','Tie','Buckle','Velcro','None'].map(c=>`<option ${c===d.closure?'selected':''}>${c}</option>`).join('')}
         </select></div>
-      </div>
-
-      <div class="spec-row">
-        <div class="spec-k">Fit</div>
+        <div class="spec-k r2">Fit</div>
         <div class="spec-v"><select class="spec-sel" id="sp-fit">
           ${['Regular Fit','Slim Fit','Relaxed','Oversized','Athletic Fit','Classic','Tailored','Loose'].map(f=>`<option ${f===d.fit?'selected':''}>${f}</option>`).join('')}
         </select></div>
-        <div class="spec-k r2">Occasion</div>
+      </div>
+
+      <div class="spec-row">
+        <div class="spec-k">Occasion</div>
         <div class="spec-v"><select class="spec-sel" id="sp-occasion">
           ${['Casual','Formal','Business','Active/Athletic','Special Occasion','Outdoor','Everyday','Lounge'].map(o=>`<option ${o===d.occasion?'selected':''}>${o}</option>`).join('')}
+        </select></div>
+        <div class="spec-k r2">Season</div>
+        <div class="spec-v"><select class="spec-sel" id="sp-season">
+          ${['All Seasons','Spring','Summer','Fall','Winter','Spring/Summer','Fall/Winter'].map(s=>`<option ${s===d.season?'selected':''}>${s}</option>`).join('')}
         </select></div>
       </div>
 
       <div class="spec-row">
-        <div class="spec-k">Season</div>
-        <div class="spec-v"><select class="spec-sel" id="sp-season">
-          ${['All Seasons','Spring','Summer','Fall','Winter','Spring/Summer','Fall/Winter'].map(s=>`<option ${s===d.season?'selected':''}>${s}</option>`).join('')}
-        </select></div>
-        <div class="spec-k r2">Lining</div>
+        <div class="spec-k">Lining</div>
         <div class="spec-v"><input class="spec-inp" id="sp-lining" value="${d.lining}" /></div>
+        <div class="spec-k r2">Category ID</div>
+        <div class="spec-v"><input class="spec-inp" id="sp-catid" value="${d.cat_id}" /></div>
       </div>
 
       <div class="spec-row">
         <div class="spec-k">SKU</div>
         <div class="spec-v"><input class="spec-inp" id="sp-sku" value="${genSku(d)}" /></div>
-        <div class="spec-k r2">Category ID</div>
-        <div class="spec-v"><input class="spec-inp" id="sp-catid" value="${d.cat_id}" /></div>
+        <div class="spec-k r2"></div>
+        <div class="spec-v"></div>
       </div>
 
     </div>
@@ -1528,6 +1539,7 @@ async function publish() {
       duration:    document.getElementById('list-dur')?.value || 'GTC',
       dispatch:    document.getElementById('dispatch')?.value || '3',
       brand:       document.getElementById('sp-brand')?.value || '',
+      style_name:  document.getElementById('sp-stylename')?.value || '',
       gender:      document.getElementById('sp-dept')?.value || '',
       size:        document.getElementById('sp-size')?.value || '',
       size_type:   document.getElementById('sp-sizetype')?.value || '',
