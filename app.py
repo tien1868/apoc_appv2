@@ -132,6 +132,7 @@ _sessions = {}
 _sessions_lock = threading.Lock()
 _ebay_token = None  # global fallback for single-user compat
 _last_data = {}     # global fallback for single-user compat
+FAL_KEY = os.environ.get("FAL_KEY", "")
 _rembg_session = None
 _rembg_failed = False
 _rembg_error = ""
@@ -193,6 +194,10 @@ fapp.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@fapp.get("/")
+async def root():
+    return JSONResponse({"name": "APOC²", "status": "running", "docs": "/docs", "health": "/health"})
 
 # ── Health check & metrics ──────────────────────────────────────────────────
 @fapp.get("/health")
@@ -283,6 +288,7 @@ async def ebay_complete_api(req: Request):
         pay = pay_r.json()
         return JSONResponse({
             "connected": True,
+            "access_token": token,
             "refresh_token": refresh,
             "shipping_policies": [{"name": p["name"], "id": p["fulfillmentPolicyId"]} for p in ship.get("fulfillmentPolicies", [])],
             "return_policies": [{"name": p["name"], "id": p["returnPolicyId"]} for p in ret.get("returnPolicies", [])],
@@ -330,6 +336,7 @@ async def ebay_refresh_api(req: Request):
         pay = pay_r.json()
         return JSONResponse({
             "connected": True,
+            "access_token": token,
             "shipping_policies": [{"name": p["name"], "id": p["fulfillmentPolicyId"]} for p in ship.get("fulfillmentPolicies", [])],
             "return_policies": [{"name": p["name"], "id": p["returnPolicyId"]} for p in ret.get("returnPolicies", [])],
             "payment_policies": [{"name": p["name"], "id": p["paymentPolicyId"]} for p in pay.get("paymentPolicies", [])],
@@ -339,22 +346,44 @@ async def ebay_refresh_api(req: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 # ── Remove background ──────────────────────────────────────────────────────
-def _remove_bg_one(img_data):
+
+def _shrink_for_upload(img_data):
+    """Resize image to max 512px and re-encode as JPEG for fast upload."""
     from PIL import Image, ImageOps
-    from rembg import remove as rr
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-    tmp.write(img_data); tmp.close()
-    fix_orientation(tmp.name)
-    with Image.open(tmp.name) as img:
-        img = ImageOps.exif_transpose(img) or img
-        if img.mode not in ("RGB", "RGBA"):
-            img = img.convert("RGB")
-        w, h = img.size
-        if max(w, h) > 1600:
-            s = 1600 / max(w, h)
-            img = img.resize((int(w * s), int(h * s)), Image.LANCZOS)
-        removed = rr(img, session=_rembg_session)
-    os.unlink(tmp.name)
+    img = Image.open(io.BytesIO(img_data))
+    img = ImageOps.exif_transpose(img) or img
+    if img.mode not in ("RGB", "RGBA"):
+        img = img.convert("RGB")
+    w, h = img.size
+    if max(w, h) > 512:
+        s = 512 / max(w, h)
+        img = img.resize((int(w * s), int(h * s)), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, "JPEG", quality=70)
+    return buf.getvalue()
+
+async def _remove_bg_fal(client, img_data):
+    """Remove background via fal.ai BiRefNet (cloud GPU)."""
+    from PIL import Image
+    small = await asyncio.get_event_loop().run_in_executor(None, _shrink_for_upload, img_data)
+    b64_input = base64.b64encode(small).decode()
+    data_uri = f"data:image/jpeg;base64,{b64_input}"
+    resp = await client.post(
+        "https://fal.run/fal-ai/birefnet/v2",
+        headers={"Authorization": f"Key {FAL_KEY}", "Content-Type": "application/json"},
+        json={"image_url": data_uri},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    result = resp.json()
+    image_url = result.get("image", {}).get("url", "")
+    if not image_url:
+        raise ValueError("fal.ai returned no image")
+    img_resp = await client.get(image_url, timeout=15)
+    img_resp.raise_for_status()
+    removed = Image.open(io.BytesIO(img_resp.content))
+    if removed.mode != "RGBA":
+        removed = removed.convert("RGBA")
     white = composite_on_white(removed)
     out = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
     white.save(out, "JPEG", quality=90); out.close()
@@ -364,22 +393,21 @@ def _remove_bg_one(img_data):
 
 @fapp.post("/remove-bg")
 async def remove_bg_api(images: List[UploadFile] = File(...)):
-    global _rembg_session, _rembg_failed, _rembg_error, _last_data
+    global _last_data
     if not images:
         return JSONResponse({"error": "No images provided"}, status_code=400)
-    waited = 0
-    while _rembg_session is None and not _rembg_failed and waited < 90:
-        time.sleep(1); waited += 1
-    if _rembg_failed:
-        return JSONResponse({"error": f"Background removal unavailable: {_rembg_error}"}, status_code=503)
-    if _rembg_session is None:
-        return JSONResponse({"error": "Background removal model still loading, try again shortly"}, status_code=503)
+    if not FAL_KEY:
+        return JSONResponse({"error": "Background removal not configured (FAL_KEY missing)"}, status_code=503)
     try:
         img_datas = [await f.read() for f in images[:12]]
-        from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            results = list(pool.map(_remove_bg_one, img_datas))
-        new_paths = [r["path"] for r in results]
+        async with httpx.AsyncClient(timeout=45) as client:
+            tasks = [_remove_bg_fal(client, d) for d in img_datas]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+        # Filter out failures, keep successes
+        good = [r for r in results if isinstance(r, dict)]
+        if not good:
+            return JSONResponse({"error": f"Background removal failed: {results[0]}"}, status_code=500)
+        new_paths = [r["path"] for r in good]
         if _last_data and "images" in _last_data:
             old_paths = _last_data["images"]
             _last_data["images"] = new_paths
@@ -410,10 +438,12 @@ async def analyze_api(images: List[UploadFile] = File(...), gender: str = Form("
             fix_orientation(tmp.name)
             paths.append(tmp.name)
         gender_hint = f" The user has indicated this is a {gender} garment." if gender else ""
+        # Send up to 8 images to Claude — need enough to include tag/label close-ups
+        analyze_paths = paths[:8]
         from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=4) as pool:
-            b64_images = list(pool.map(encode_b64, paths))
-        content = [{"type": "text", "text": f"Analyze these garment photos. Carefully read ALL visible tags and labels for brand, size, material, and origin.{gender_hint} Return ONLY valid JSON."}]
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            b64_images = list(pool.map(encode_b64, analyze_paths))
+        content = [{"type": "text", "text": f"Analyze these garment photos. CRITICAL: Zoom in on and carefully read ALL visible tags, labels, and printed text — brand labels, size tags, care/content labels, style number tags, RN number tags. Transcribe the EXACT text from each tag. Look at every image for tags.{gender_hint} Return ONLY valid JSON."}]
         for b64 in b64_images:
             content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}})
         resp = claude.messages.create(model=CLAUDE_MODEL, max_tokens=1500, system=SYSTEM_PROMPT,
@@ -599,7 +629,7 @@ async def _publish_ebay(body):
     global _last_data, _ebay_token
     session_id = body.get("session_id", "")
     sess = get_session(session_id)
-    token = (sess["ebay_token"] if sess and sess.get("ebay_token") else None) or _ebay_token
+    token = body.get("ebay_token") or (sess["ebay_token"] if sess and sess.get("ebay_token") else None) or _ebay_token
     if not token:
         return {"error": "Not connected to eBay", "success": False}
     images_b64 = body.get("images_b64", [])
@@ -671,7 +701,7 @@ async def _publish_ebay(body):
         if listing_format == "Chinese" and buy_now_price:
             bin_xml = f"<BuyItNowPrice>{float(buy_now_price):.2f}</BuyItNowPrice>"
         bo_xml = ""
-        if best_offer and listing_format == "FixedPriceItem":
+        if best_offer:
             bo_xml = "<BestOfferDetails><BestOfferEnabled>true</BestOfferEnabled></BestOfferDetails>"
             if min_offer:
                 bo_xml += f"<ListingDetails><MinimumBestOfferPrice>{float(min_offer):.2f}</MinimumBestOfferPrice></ListingDetails>"
@@ -752,33 +782,98 @@ async def publish_api(req: Request):
     return JSONResponse(result, status_code=status)
 
 # ── Multi-platform listing ──────────────────────────────────────────────────
+def _platform_data(body):
+    """Extract common listing data from body (uses analysis_data or top-level fields)."""
+    d = body.get("analysis_data", body)
+    title = body.get("title") or d.get("title", "")
+    desc = body.get("description") or d.get("description", "")
+    brand = body.get("brand") or d.get("brand", "")
+    cat = body.get("category") or d.get("category", "")
+    size = body.get("size") or d.get("size", "")
+    color = body.get("color") or d.get("color", "")
+    material = body.get("material") or d.get("material", "")
+    condition = d.get("condition_label", "Good")
+    price = float(body.get("start_price") or d.get("suggested_price_low", 0) or 0)
+    style_name = d.get("style_name", "")
+    tags = [t for t in [brand, cat, color, material, size, style_name] if t and t.lower() not in ("none", "null", "")]
+    return {"title": title, "desc": desc, "brand": brand, "category": cat, "size": size,
+            "color": color, "material": material, "condition": condition, "price": price,
+            "style_name": style_name, "tags": tags}
+
 def _format_poshmark(body):
-    data = body.get("analysis_data", body)
+    d = _platform_data(body)
+    # Poshmark: 80 char title, 20% seller fee, hashtag description
+    posh_price = round(d["price"] * 1.25, 2) if d["price"] else 0  # pad for 20% fee
+    hashtags = " ".join(f"#{t.replace(' ', '')}" for t in d["tags"][:6])
+    posh_desc = f"{d['desc']}\n\n{hashtags}"
     return {
-        "title": (data.get("title", "") or "")[:80],
-        "description": data.get("description", ""),
-        "brand": data.get("brand", ""),
-        "category": data.get("category", ""),
-        "size": data.get("size", ""),
-        "color": data.get("color", ""),
-        "condition": data.get("condition_label", "Good"),
-        "price": data.get("suggested_price_low", 0),
-        "platform_notes": "Poshmark does not have a public listing API. Use this data to list manually on Poshmark.",
+        "title": d["title"][:80],
+        "description": posh_desc,
+        "brand": d["brand"],
+        "category": d["category"],
+        "size": d["size"],
+        "color": d["color"],
+        "condition": d["condition"],
+        "price": posh_price,
+        "hashtags": hashtags,
     }
 
 def _format_mercari(body):
-    data = body.get("analysis_data", body)
+    d = _platform_data(body)
+    # Mercari: 80 char title, 10% seller fee
+    merc_price = round(d["price"] * 1.12, 2) if d["price"] else 0
+    cond_map = {"New with Tags": "New", "New without Tags": "Like New", "Excellent": "Like New",
+                "Very Good": "Good", "Good": "Good", "Fair": "Fair", "Poor": "Fair"}
+    merc_cond = cond_map.get(d["condition"], "Good")
     return {
-        "title": (data.get("title", "") or "")[:80],
-        "description": data.get("description", ""),
-        "brand": data.get("brand", ""),
-        "category": data.get("category", ""),
-        "size": data.get("size", ""),
-        "color": data.get("color", ""),
-        "condition": data.get("condition_label", "Good"),
-        "price": data.get("suggested_price_low", 0),
-        "platform_notes": "Mercari does not have a public listing API. Use this data to list manually on Mercari.",
+        "title": d["title"][:80],
+        "description": d["desc"],
+        "brand": d["brand"],
+        "category": d["category"],
+        "size": d["size"],
+        "color": d["color"],
+        "condition": merc_cond,
+        "price": merc_price,
     }
+
+def _format_depop(body):
+    d = _platform_data(body)
+    hashtags = " ".join(f"#{t.replace(' ', '').lower()}" for t in d["tags"][:5])
+    depop_desc = f"{d['desc']}\n\n{hashtags}"
+    return {
+        "title": d["title"][:50],
+        "description": depop_desc,
+        "brand": d["brand"],
+        "category": d["category"],
+        "size": d["size"],
+        "color": d["color"],
+        "condition": d["condition"],
+        "price": round(d["price"], 2),
+        "hashtags": hashtags,
+    }
+
+def _format_facebook(body):
+    d = _platform_data(body)
+    style = f" {d['style_name']}" if d["style_name"] else ""
+    fb_title = f"{d['brand']}{style} — {d['size']}" if d["brand"] else d["title"]
+    fb_desc = f"{d['desc']}\n\nBrand: {d['brand']}\nSize: {d['size']}\nColor: {d['color']}\nCondition: {d['condition']}"
+    return {
+        "title": fb_title[:99],
+        "description": fb_desc,
+        "brand": d["brand"],
+        "category": d["category"],
+        "size": d["size"],
+        "color": d["color"],
+        "condition": d["condition"],
+        "price": round(d["price"] * 0.95, 2),  # slightly lower for local/quick sale
+    }
+
+PLATFORM_FORMATTERS = {
+    "poshmark": _format_poshmark,
+    "mercari": _format_mercari,
+    "depop": _format_depop,
+    "facebook": _format_facebook,
+}
 
 @fapp.post("/publish-multi")
 async def publish_multi(req: Request):
@@ -787,11 +882,49 @@ async def publish_multi(req: Request):
     results = {}
     if "ebay" in platforms:
         results["ebay"] = await _publish_ebay(body)
-    if "poshmark" in platforms:
-        results["poshmark"] = {"status": "manual", "formatted_data": _format_poshmark(body)}
-    if "mercari" in platforms:
-        results["mercari"] = {"status": "manual", "formatted_data": _format_mercari(body)}
+    for plat in ["poshmark", "mercari", "depop", "facebook"]:
+        if plat in platforms:
+            results[plat] = {"status": "manual", "formatted_data": PLATFORM_FORMATTERS[plat](body)}
     return JSONResponse(results)
+
+# ── Delist from eBay ──────────────────────────────────────────────────────
+@fapp.post("/delist")
+async def delist_api(req: Request):
+    body = await req.json()
+    item_id = body.get("item_id")
+    token = body.get("ebay_token") or _ebay_token
+    if not item_id:
+        return JSONResponse({"error": "No item_id provided", "success": False}, status_code=400)
+    if not token:
+        return JSONResponse({"error": "Not connected to eBay", "success": False}, status_code=401)
+    try:
+        xml = f'''<?xml version="1.0" encoding="utf-8"?>
+<EndItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+<RequesterCredentials><eBayAuthToken>{token}</eBayAuthToken></RequesterCredentials>
+<ItemID>{item_id}</ItemID>
+<EndingReason>NotAvailable</EndingReason>
+</EndItemRequest>'''
+        h = {
+            "X-EBAY-API-IAF-TOKEN": token,
+            "X-EBAY-API-COMPATIBILITY-LEVEL": "967",
+            "X-EBAY-API-DEV-NAME": EBAY_DEV_ID,
+            "X-EBAY-API-APP-NAME": EBAY_APP_ID,
+            "X-EBAY-API-CERT-NAME": EBAY_CERT_ID,
+            "X-EBAY-API-SITEID": "0",
+            "X-EBAY-API-CALL-NAME": "EndItem",
+            "Content-Type": "text/xml",
+        }
+        async with httpx.AsyncClient() as client:
+            r = await client.post(EBAY_API_URL, content=xml.encode(), headers=h, timeout=15)
+        root = ET.fromstring(r.text)
+        ns = {"e": "urn:ebay:apis:eBLBaseComponents"}
+        ack = root.find(".//e:Ack", ns)
+        if ack is not None and ack.text in ("Success", "Warning"):
+            return JSONResponse({"success": True, "item_id": item_id})
+        errors = "\n".join(e.text for e in root.findall(".//e:Errors/e:LongMessage", ns) if e.text)
+        return JSONResponse({"success": False, "error": errors or "Unknown eBay error"}, status_code=400)
+    except Exception as e:
+        return JSONResponse({"success": False, "error": str(e)}, status_code=500)
 
 # ── Batch listing queue ─────────────────────────────────────────────────────
 QUEUE_FILE = "/tmp/apoc2_queue.json"
@@ -866,7 +999,7 @@ def composite_on_white(img):
     bg.paste(img, mask=img.split()[3] if img.mode == "RGBA" else None)
     return bg
 
-def compress_image(path):
+def compress_image(path, max_dim=800, quality=75):
     from PIL import Image
     with Image.open(path) as img:
         if img.mode == "RGBA":
@@ -874,48 +1007,47 @@ def compress_image(path):
         elif img.mode != "RGB":
             img = img.convert("RGB")
         w, h = img.size
-        if max(w, h) > 1600:
-            s = 1600 / max(w, h)
+        if max(w, h) > max_dim:
+            s = max_dim / max(w, h)
             img = img.resize((int(w * s), int(h * s)), Image.LANCZOS)
         buf = io.BytesIO()
-        img.save(buf, "JPEG", quality=85, optimize=True)
-        if buf.tell() > 3_000_000:
-            buf = io.BytesIO()
-            img.save(buf, "JPEG", quality=72, optimize=True)
+        img.save(buf, "JPEG", quality=quality, optimize=True)
         return buf.getvalue()
 
-def encode_b64(path):
-    return base64.standard_b64encode(compress_image(path)).decode()
+def encode_b64(path, max_dim=1400, quality=85):
+    """Encode image for Claude analysis — higher res than eBay uploads for tag/label OCR."""
+    return base64.standard_b64encode(compress_image(path, max_dim=max_dim, quality=quality)).decode()
 
 # ── HTML description builder ────────────────────────────────────────────────
 def build_description_html(data, body):
     import html as h
-    title = h.escape(data.get("title", ""))
-    brand = h.escape(data.get("brand", "Unknown"))
-    style_name = h.escape(data.get("style_name") or "")
-    desc = h.escape(data.get("description", ""))
-    material = h.escape(data.get("material", ""))
-    color = h.escape(data.get("color", ""))
-    size = h.escape(data.get("size", ""))
-    fit = h.escape(data.get("fit", ""))
-    cond_label = h.escape(data.get("condition_label", "Good"))
-    cond_notes = h.escape(data.get("condition_notes", ""))
-    defects = data.get("defects_detected", [])
-    features = data.get("features", [])
-    care = h.escape(data.get("care_instructions", ""))
-    origin = h.escape(data.get("origin", ""))
-    pattern = h.escape(data.get("pattern", ""))
-    sleeve = h.escape(data.get("sleeve_length", ""))
-    neckline = h.escape(data.get("neckline", ""))
-    closure = h.escape(data.get("closure", ""))
-    season = h.escape(data.get("season", ""))
-    lining = h.escape(data.get("lining_material") or "")
-    m_chest = h.escape(body.get("m_chest", ""))
-    m_length = h.escape(body.get("m_length", ""))
-    m_sleeve = h.escape(body.get("m_sleeve", ""))
-    m_waist = h.escape(body.get("m_waist", ""))
-    m_inseam = h.escape(body.get("m_inseam", ""))
-    m_shoulder = h.escape(body.get("m_shoulder", ""))
+    def esc(v): return h.escape(str(v)) if v else ""
+    title = esc(data.get("title"))
+    brand = esc(data.get("brand")) or "Unknown"
+    style_name = esc(data.get("style_name"))
+    desc = esc(data.get("description"))
+    material = esc(data.get("material"))
+    color = esc(data.get("color"))
+    size = esc(data.get("size"))
+    fit = esc(data.get("fit"))
+    cond_label = esc(data.get("condition_label")) or "Good"
+    cond_notes = esc(data.get("condition_notes"))
+    defects = data.get("defects_detected") or []
+    features = data.get("features") or []
+    care = esc(data.get("care_instructions") or body.get("care_instructions"))
+    origin = esc(data.get("origin"))
+    pattern = esc(data.get("pattern"))
+    sleeve = esc(data.get("sleeve_length"))
+    neckline = esc(data.get("neckline"))
+    closure = esc(data.get("closure"))
+    season = esc(data.get("season"))
+    lining = esc(data.get("lining_material"))
+    m_chest = esc(body.get("m_chest"))
+    m_length = esc(body.get("m_length"))
+    m_sleeve = esc(body.get("m_sleeve"))
+    m_waist = esc(body.get("m_waist"))
+    m_inseam = esc(body.get("m_inseam"))
+    m_shoulder = esc(body.get("m_shoulder"))
     has_measurements = any([m_chest, m_length, m_sleeve, m_waist, m_inseam, m_shoulder])
     features_html = ""
     if features:
