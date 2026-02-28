@@ -68,6 +68,18 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
 .modal-plat:hover{border-color:var(--amber-b)}
 .modal-plat .dot{width:10px;height:10px;border-radius:50%}
 .modal-cancel{padding:8px 16px;border:1px solid var(--bdr-h);background:transparent;color:var(--t2);font-family:'DM Mono',monospace;font-size:11px;border-radius:var(--r);cursor:pointer;width:100%}
+
+/* Delist reminder modal */
+.delist-modal{max-width:460px}
+.delist-modal h3{font-size:15px;margin-bottom:6px}
+.delist-modal .delist-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--t2);margin-bottom:16px;line-height:1.6}
+.delist-msg{font-family:'DM Mono',monospace;font-size:11px;color:var(--green);margin-bottom:14px;padding:8px 12px;background:var(--green-d);border:1px solid var(--green-b);border-radius:var(--r)}
+.delist-links{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.delist-link{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);text-decoration:none;transition:all .15s}
+.delist-link:hover{border-color:var(--amber-b);background:var(--surf3)}
+.delist-link .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.delist-link .dl-name{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);flex:1}
+.delist-link .dl-arrow{font-family:'DM Mono',monospace;font-size:11px;color:var(--amber)}
 </style>
 </head>
 <body>
@@ -96,6 +108,16 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
     <h3>Where did it sell?</h3>
     <div class="modal-plats" id="modal-plats"></div>
     <button class="modal-cancel" onclick="closeSoldModal()">Cancel</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="delist-modal">
+  <div class="modal delist-modal">
+    <h3>Delist from other platforms</h3>
+    <div id="delist-ebay-msg"></div>
+    <div class="delist-sub" id="delist-sub">Open each platform to remove your listing:</div>
+    <div class="delist-links" id="delist-links"></div>
+    <button class="modal-cancel" onclick="closeDelistModal()">Done</button>
   </div>
 </div>
 
@@ -204,6 +226,15 @@ function closeSoldModal() {
   soldItemId = null;
 }
 
+// Deep links to each platform's listing/closet management page
+const PLATFORM_LINKS = {
+  ebay:      { name: 'eBay Seller Hub',       url: 'https://www.ebay.com/sh/lst/active' },
+  poshmark:  { name: 'Poshmark My Closet',    url: 'https://poshmark.com/closet' },
+  mercari:   { name: 'Mercari My Listings',    url: 'https://www.mercari.com/mypage/listings/' },
+  depop:     { name: 'Depop My Shop',          url: 'https://www.depop.com/sellinghub/' },
+  facebook:  { name: 'Facebook Marketplace',   url: 'https://www.facebook.com/marketplace/you/selling' },
+};
+
 async function markSold(platform) {
   closeSoldModal();
   const inv = getInventory();
@@ -211,6 +242,9 @@ async function markSold(platform) {
   if (!item) return;
   item.sold_on = platform;
   item.sold_at = new Date().toISOString();
+
+  let ebayMsg = '';
+
   // Auto-delist from eBay if sold elsewhere
   if (platform !== 'ebay' && item.platforms.ebay && item.platforms.ebay.item_id) {
     const token = localStorage.getItem('apoc2_ebay_access');
@@ -224,27 +258,59 @@ async function markSold(platform) {
         const result = await resp.json();
         if (result.success) {
           item.platforms.ebay.status = 'delisted';
-          alert(`eBay listing #${item.platforms.ebay.item_id} has been delisted.`);
+          ebayMsg = `eBay listing #${item.platforms.ebay.item_id} auto-delisted successfully.`;
         } else {
-          alert(`Could not delist from eBay: ${result.error}\nPlease delist manually.`);
+          ebayMsg = `Could not auto-delist from eBay: ${result.error}`;
         }
       } catch (err) {
-        alert('Could not reach server to delist from eBay. Please delist manually.');
+        ebayMsg = 'Could not reach server to delist from eBay.';
       }
     }
   }
+
   // Mark all platforms as sold/delisted
   Object.keys(item.platforms).forEach(p => {
     item.platforms[p].status = p === platform ? 'sold' : 'delisted';
   });
-  // Remind about manual delisting
-  const manualDelist = Object.keys(item.platforms).filter(p => p !== 'ebay' && p !== platform && item.platforms[p].status === 'delisted');
-  if (manualDelist.length) {
-    alert(`Don't forget to delist from: ${manualDelist.join(', ')}`);
-  }
+
   saveInventory(inv);
   renderStats();
   renderItems();
+
+  // Show delist modal with deep links for platforms that need manual delisting
+  const manualDelist = Object.keys(item.platforms).filter(p => p !== platform && item.platforms[p].status === 'delisted');
+  // Exclude eBay from manual list if it was auto-delisted
+  const needManual = manualDelist.filter(p => !(p === 'ebay' && ebayMsg.includes('successfully')));
+
+  if (needManual.length || ebayMsg) {
+    showDelistModal(item, platform, needManual, ebayMsg);
+  }
+}
+
+function showDelistModal(item, soldPlatform, platforms, ebayMsg) {
+  const msgEl = document.getElementById('delist-ebay-msg');
+  msgEl.innerHTML = ebayMsg
+    ? `<div class="delist-msg">${ebayMsg.includes('successfully') ? '✓ ' : '⚠ '}${ebayMsg}</div>`
+    : '';
+  const sub = document.getElementById('delist-sub');
+  sub.textContent = platforms.length
+    ? `Sold on ${soldPlatform}. Open each platform below to remove your listing:`
+    : `Sold on ${soldPlatform}. All other platforms handled.`;
+  const linksEl = document.getElementById('delist-links');
+  linksEl.innerHTML = platforms.map(p => {
+    const info = PLATFORM_LINKS[p] || { name: p, url: '#' };
+    const color = PLAT_COLORS[p] || 'var(--amber)';
+    return `<a class="delist-link" href="${info.url}" target="_blank" rel="noopener">
+      <div class="dot" style="background:${color}"></div>
+      <span class="dl-name">${info.name}</span>
+      <span class="dl-arrow">Open →</span>
+    </a>`;
+  }).join('');
+  document.getElementById('delist-modal').classList.add('show');
+}
+
+function closeDelistModal() {
+  document.getElementById('delist-modal').classList.remove('show');
 }
 
 function removeItem(itemId) {
