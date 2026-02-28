@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>APOC² — Settings</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0d0f12;--surf:#13161b;--surf2:#191c22;--surf3:#1f232b;
+  --bdr:rgba(255,255,255,0.07);--bdr-h:rgba(255,255,255,0.12);
+  --amber:#e8924a;--amber-d:rgba(232,146,74,0.14);--amber-b:rgba(232,146,74,0.28);
+  --green:#3ecf8e;--green-d:rgba(62,207,142,0.12);--green-b:rgba(62,207,142,0.28);
+  --red:#e05c5c;--red-d:rgba(224,92,92,0.12);
+  --blue:#5b9cf6;--blue-d:rgba(91,156,246,0.12);--blue-b:rgba(91,156,246,0.28);
+  --text:#e8e5e0;--t2:#7a7875;--t3:#3d3c3a;
+  --r:8px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh}
+
+.hdr{padding:16px 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bdr)}
+.hdr h1{font-size:18px;font-weight:800;letter-spacing:-.02em}
+.hdr h1 sup{font-size:10px;color:var(--amber)}
+.hdr-nav{display:flex;gap:8px;align-items:center}
+.hdr a{font-family:'DM Mono',monospace;font-size:11px;color:var(--amber);text-decoration:none;border:1px solid var(--amber-b);padding:5px 12px;border-radius:4px;transition:all .15s}
+.hdr a:hover{background:var(--amber-d)}
+
+.page{max-width:720px;margin:0 auto;padding:24px}
+.section{background:var(--surf);border:1px solid var(--bdr);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.section-hd{padding:16px 20px;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px}
+.section-title{font-size:14px;font-weight:700;flex:1}
+.section-badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);padding:3px 8px;border-radius:4px;background:var(--surf2);border:1px solid var(--bdr)}
+.section-body{padding:20px}
+
+/* Platform cards */
+.plat-card{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:10px;transition:border-color .15s}
+.plat-card:last-child{margin-bottom:0}
+.plat-card.connected{border-color:var(--green-b)}
+.plat-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.plat-name{font-size:13px;font-weight:700;min-width:90px}
+.plat-input{flex:1;background:var(--surf3);border:1px solid var(--bdr-h);border-radius:var(--r);padding:8px 12px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;outline:none;transition:border-color .15s}
+.plat-input:focus{border-color:var(--amber-b)}
+.plat-input::placeholder{color:var(--t3)}
+.plat-status{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2);white-space:nowrap}
+.plat-status.on{color:var(--green)}
+
+/* eBay specific */
+.ebay-section{margin-bottom:10px}
+.ebay-connect-row{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:14px 16px;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:12px}
+.ebay-icon{width:36px;height:36px;border-radius:8px;background:var(--blue-d);border:1px solid var(--blue-b);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.ebay-info{flex:1;min-width:0}
+.ebay-info-title{font-size:13px;font-weight:700;margin-bottom:2px}
+.ebay-info-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2)}
+.ebay-btn{padding:10px 18px;border-radius:var(--r);background:var(--blue);border:1px solid var(--blue);color:#000;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;text-decoration:none;display:inline-flex;align-items:center}
+.ebay-btn:hover{background:#7ab3ff;box-shadow:0 4px 12px rgba(91,156,246,.2)}
+.ebay-btn.sec{background:var(--surf2);border-color:var(--bdr-h);color:var(--t2);font-weight:600}
+.ebay-btn.sec:hover{background:var(--surf3);color:var(--text)}
+.connected-badge{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--green-d);border:1px solid var(--green-b);border-radius:var(--r);font-family:'DM Mono',monospace;font-size:11px;color:var(--green);margin-bottom:12px}
+.e-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;box-shadow:0 0 6px currentColor;animation:blink 2.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* Form elements */
+.g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.lbl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);margin-bottom:7px;display:block}
+.f-sel,.f-inp{width:100%;background:var(--surf2);border:1px solid var(--bdr-h);border-radius:var(--r);padding:10px 12px;color:var(--text);font-family:'Syne',sans-serif;font-size:13px;outline:none;transition:border-color .15s;-webkit-appearance:none}
+.f-sel:focus,.f-inp:focus{border-color:var(--amber-b)}
+.f-sel{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%233d3c3a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.f-inp.mono{font-family:'DM Mono',monospace;letter-spacing:.1em}
+.sec-div{height:1px;background:var(--bdr);margin:16px 0}
+
+/* Toggle */
+.toggle{position:relative;width:36px;height:20px;flex-shrink:0;display:inline-block}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{position:absolute;inset:0;background:var(--surf3);border:1px solid var(--bdr-h);border-radius:10px;cursor:pointer;transition:all .2s}
+.toggle-track::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;background:var(--t2);border-radius:50%;transition:all .2s}
+.toggle input:checked+.toggle-track{background:var(--amber-d);border-color:var(--amber-b)}
+.toggle input:checked+.toggle-track::after{transform:translateX(16px);background:var(--amber)}
+.toggle-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+
+.save-note{font-family:'DM Mono',monospace;font-size:10px;color:var(--green);letter-spacing:.06em;opacity:0;transition:opacity .3s;padding:6px 0}
+.save-note.show{opacity:1}
+
+/* Advanced section */
+.advanced-toggle{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2);cursor:pointer;padding:12px 20px;display:flex;align-items:center;gap:6px;border-top:1px solid var(--bdr);transition:color .15s}
+.advanced-toggle:hover{color:var(--amber)}
+.advanced-body{padding:0 20px 20px;display:none}
+.advanced-body.show{display:block}
+
+@media(max-width:640px){
+  .hdr{flex-direction:column;align-items:flex-start;gap:10px}
+  .page{padding:16px}
+  .plat-card{flex-wrap:wrap}
+  .plat-name{min-width:70px}
+  .ebay-connect-row{flex-direction:column;align-items:stretch}
+  .ebay-btn{width:100%;justify-content:center}
+}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>APOC<sup>2</sup> Settings</h1>
+  <div class="hdr-nav">
+    <a href="index.html">+ New Listing</a>
+    <a href="inventory.html">Inventory</a>
+    <a href="bulk.html">Bulk Upload</a>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- ═══ PLATFORM CONNECTIONS ═══ -->
+<div class="section">
+  <div class="section-hd">
+    <div class="section-title">Platform Connections</div>
+    <div class="section-badge">Accounts</div>
+  </div>
+  <div class="section-body">
+
+    <!-- eBay -->
+    <div class="ebay-section">
+      <div id="ebay-nc">
+        <div class="ebay-connect-row">
+          <div class="ebay-icon">🛒</div>
+          <div class="ebay-info">
+            <div class="ebay-info-title">eBay Seller Account</div>
+            <div class="ebay-info-sub">Connect via OAuth to enable auto-publishing & delisting</div>
+          </div>
+          <a class="ebay-btn" href="#" onclick="startAuth(event)">Connect eBay →</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <button class="ebay-btn sec" onclick="completeAuth()">Complete Authorization</button>
+          <span id="auth-msg" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t2)"></span>
+        </div>
+      </div>
+      <div id="ebay-cn" style="display:none">
+        <div class="connected-badge" style="justify-content:space-between">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="e-dot"></div>
+            <span id="ebay-acct">Connected</span>
+          </div>
+          <button class="ebay-btn sec" style="padding:6px 12px;font-size:10px" onclick="document.getElementById('ebay-cn').style.display='none';document.getElementById('ebay-nc').style.display='block'">Reconnect</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-div"></div>
+
+    <!-- Other platforms -->
+    <div class="plat-card" id="posh-card">
+      <div class="plat-dot" style="background:#e05c5c"></div>
+      <div class="plat-name">Poshmark</div>
+      <input class="plat-input" id="posh-user" placeholder="Closet username" oninput="savePlatformUsers()"/>
+      <div class="plat-status" id="posh-status">Not set</div>
+    </div>
+
+    <div class="plat-card" id="merc-card">
+      <div class="plat-dot" style="background:#e8924a"></div>
+      <div class="plat-name">Mercari</div>
+      <input class="plat-input" id="merc-user" placeholder="Profile username" oninput="savePlatformUsers()"/>
+      <div class="plat-status" id="merc-status">Not set</div>
+    </div>
+
+    <div class="plat-card" id="depop-card">
+      <div class="plat-dot" style="background:#3ecf8e"></div>
+      <div class="plat-name">Depop</div>
+      <input class="plat-input" id="depop-user" placeholder="Shop username" oninput="savePlatformUsers()"/>
+      <div class="plat-status" id="depop-status">Not set</div>
+    </div>
+
+    <div class="plat-card" id="fb-card">
+      <div class="plat-dot" style="background:#5b9cf6"></div>
+      <div class="plat-name">Facebook</div>
+      <div style="display:flex;align-items:center;gap:10px;flex:1">
+        <label class="toggle">
+          <input type="checkbox" id="fb-toggle" onchange="savePlatformUsers()">
+          <span class="toggle-track"></span>
+        </label>
+        <label class="toggle-label" for="fb-toggle">I list on Marketplace</label>
+      </div>
+      <div class="plat-status" id="fb-status">Off</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══ EBAY POLICIES ═══ -->
+<div class="section" id="policies-section">
+  <div class="section-hd">
+    <div class="section-title">eBay Seller Policies</div>
+    <div class="section-badge">Auto-loaded</div>
+  </div>
+  <div class="section-body">
+    <div class="g3" style="margin-bottom:14px">
+      <div>
+        <label class="lbl">Shipping Policy</label>
+        <select class="f-sel" id="ship-policy" onchange="savePolicies()">
+          <option value="">— Connect eBay first —</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Return Policy</label>
+        <select class="f-sel" id="ret-policy" onchange="savePolicies()">
+          <option value="">— Connect eBay first —</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Payment Policy</label>
+        <select class="f-sel" id="pay-policy" onchange="savePolicies()">
+          <option value="">— Connect eBay first —</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ LISTING DEFAULTS ═══ -->
+<div class="section">
+  <div class="section-hd">
+    <div class="section-title">Listing Defaults</div>
+    <div class="section-badge">Saved locally</div>
+  </div>
+  <div class="section-body">
+    <div class="g3">
+      <div>
+        <label class="lbl">Origin ZIP Code</label>
+        <input class="f-inp mono" id="zip-inp" type="text" value="" placeholder="Enter ZIP" maxlength="10" oninput="saveZip()"/>
+      </div>
+      <div>
+        <label class="lbl">Listing Format</label>
+        <select class="f-sel" id="list-fmt" onchange="onFormatChange();savePolicies()">
+          <option value="FixedPriceItem">Fixed Price</option>
+          <option value="Chinese">Auction</option>
+        </select>
+      </div>
+      <div>
+        <label class="lbl">Listing Duration</label>
+        <select class="f-sel" id="list-dur" onchange="savePolicies()">
+          <option value="GTC">Good Till Cancelled</option>
+          <option value="Days_30">30 Days</option>
+          <option value="Days_7">7 Days</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="g3" style="margin-top:12px">
+      <div>
+        <label class="lbl">Dispatch Time</label>
+        <select class="f-sel" id="dispatch" onchange="savePolicies()">
+          <option value="1">1 business day</option>
+          <option value="2">2 business days</option>
+          <option value="3" selected>3 business days</option>
+          <option value="5">5 business days</option>
+        </select>
+      </div>
+      <div id="price-group-1">
+        <label class="lbl" id="price-lbl-1">Buy It Now Price ($)</label>
+        <input class="f-inp mono" id="price-inp" type="number" step="0.01" min="0.99" placeholder="0.00" oninput="savePolicies()"/>
+      </div>
+      <div id="price-group-2" style="display:none">
+        <label class="lbl">Buy It Now ($) <span style="color:var(--t3)">optional</span></label>
+        <input class="f-inp mono" id="bin-price-inp" type="number" step="0.01" min="0" placeholder="Optional" oninput="savePolicies()"/>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <label class="toggle">
+        <input type="checkbox" id="best-offer-chk" onchange="onOfferToggle();savePolicies()">
+        <span class="toggle-track"></span>
+      </label>
+      <label class="toggle-label" for="best-offer-chk">Accept Best Offer</label>
+      <div id="min-offer-wrap" style="display:none;margin-left:12px">
+        <input class="f-inp mono" id="min-offer-inp" type="number" step="0.01" min="0" placeholder="Min offer $" style="width:140px" oninput="savePolicies()"/>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;margin-top:10px">
+      <span class="save-note" id="save-note">✓ Settings saved</span>
+    </div>
+  </div>
+
+  <!-- Advanced -->
+  <div class="advanced-toggle" onclick="this.nextElementSibling.classList.toggle('show');this.querySelector('span').textContent=this.nextElementSibling.classList.contains('show')?'▾':'▸'">
+    <span>▸</span> Advanced
+  </div>
+  <div class="advanced-body">
+    <label class="lbl">API Base URL</label>
+    <input class="f-inp mono" id="api-url" type="text" placeholder="https://..." oninput="saveApiUrl()"/>
+    <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--t3);margin-top:6px">Override the backend API URL. Leave blank for default.</div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const DEFAULT_API = 'https://pm9d3cd2bq.us-east-1.awsapprunner.com';
+const API = localStorage.getItem('apoc2_api') || DEFAULT_API;
+
+/* ═══ PLATFORM USERNAMES ═══ */
+function savePlatformUsers() {
+  const posh = document.getElementById('posh-user').value.trim();
+  const merc = document.getElementById('merc-user').value.trim();
+  const depop = document.getElementById('depop-user').value.trim();
+  const fb = document.getElementById('fb-toggle').checked;
+
+  if (posh) localStorage.setItem('apoc2_poshmark_user', posh);
+  else localStorage.removeItem('apoc2_poshmark_user');
+
+  if (merc) localStorage.setItem('apoc2_mercari_user', merc);
+  else localStorage.removeItem('apoc2_mercari_user');
+
+  if (depop) localStorage.setItem('apoc2_depop_user', depop);
+  else localStorage.removeItem('apoc2_depop_user');
+
+  localStorage.setItem('apoc2_fb_enabled', fb ? '1' : '');
+
+  updatePlatformStatuses();
+  flashSave();
+}
+
+function updatePlatformStatuses() {
+  const posh = document.getElementById('posh-user').value.trim();
+  const merc = document.getElementById('merc-user').value.trim();
+  const depop = document.getElementById('depop-user').value.trim();
+  const fb = document.getElementById('fb-toggle').checked;
+
+  setStatus('posh', posh);
+  setStatus('merc', merc);
+  setStatus('depop', depop);
+  document.getElementById('fb-status').textContent = fb ? 'Active' : 'Off';
+  document.getElementById('fb-status').className = 'plat-status' + (fb ? ' on' : '');
+  document.getElementById('fb-card').classList.toggle('connected', fb);
+}
+
+function setStatus(prefix, value) {
+  const el = document.getElementById(prefix + '-status');
+  const card = document.getElementById(prefix + '-card');
+  if (value) {
+    el.textContent = '✓ ' + value;
+    el.className = 'plat-status on';
+    card.classList.add('connected');
+  } else {
+    el.textContent = 'Not set';
+    el.className = 'plat-status';
+    card.classList.remove('connected');
+  }
+}
+
+function loadPlatformUsers() {
+  document.getElementById('posh-user').value = localStorage.getItem('apoc2_poshmark_user') || '';
+  document.getElementById('merc-user').value = localStorage.getItem('apoc2_mercari_user') || '';
+  document.getElementById('depop-user').value = localStorage.getItem('apoc2_depop_user') || '';
+  document.getElementById('fb-toggle').checked = localStorage.getItem('apoc2_fb_enabled') === '1';
+  updatePlatformStatuses();
+}
+
+/* ═══ EBAY AUTH ═══ */
+async function startAuth(e) {
+  e.preventDefault();
+  const msg = document.getElementById('auth-msg');
+  msg.textContent = 'Loading eBay authorization...';
+  try {
+    const resp = await fetch(`${API}/ebay-auth-url`);
+    const data = await resp.json();
+    if (data.error) { msg.textContent = 'Error: ' + data.error; return; }
+    window.open(data.url, '_blank');
+    msg.textContent = 'Complete sign-in on eBay, then click Complete Authorization ↓';
+  } catch(err) {
+    msg.textContent = 'Failed to get auth URL: ' + err.message;
+  }
+}
+
+async function completeAuth() {
+  const msg = document.getElementById('auth-msg');
+  msg.textContent = 'Completing authorization...';
+  try {
+    const resp = await fetch(`${API}/ebay-complete`, { method: 'POST' });
+    const data = await resp.json();
+    if (data.error) { msg.textContent = 'Error: ' + data.error; return; }
+    if (!data.connected) { msg.textContent = 'Authorization incomplete. Sign in on eBay first.'; return; }
+
+    msg.textContent = '';
+    document.getElementById('ebay-nc').style.display = 'none';
+    document.getElementById('ebay-cn').style.display = 'block';
+    const sc = (data.shipping_policies||[]).length;
+    const rc = (data.return_policies||[]).length;
+    const pc = (data.payment_policies||[]).length;
+    document.getElementById('ebay-acct').textContent = `✓ Connected · ${sc} shipping · ${rc} return · ${pc} payment policies`;
+
+    fillDropdown('ship-policy', data.shipping_policies || []);
+    fillDropdown('ret-policy',  data.return_policies || []);
+    fillDropdown('pay-policy',  data.payment_policies || []);
+
+    saveEbayPolicies(data);
+    if (data.access_token) localStorage.setItem('apoc2_ebay_access', data.access_token);
+    if (data.refresh_token) localStorage.setItem('apoc2_ebay_refresh', data.refresh_token);
+    savePolicies();
+    flashSave();
+  } catch(err) {
+    msg.textContent = 'Connection failed: ' + err.message;
+  }
+}
+
+async function autoReconnectEbay(refreshToken) {
+  try {
+    const resp = await fetch(`${API}/ebay-refresh`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({refresh_token: refreshToken}),
+    });
+    const data = await resp.json();
+    if (data.error) {
+      localStorage.removeItem('apoc2_ebay_refresh');
+      document.getElementById('ebay-acct').textContent = 'Reconnect needed — policies cached';
+      return;
+    }
+    if (data.connected) {
+      fillDropdown('ship-policy', data.shipping_policies || []);
+      fillDropdown('ret-policy',  data.return_policies || []);
+      fillDropdown('pay-policy',  data.payment_policies || []);
+      saveEbayPolicies(data);
+      if (data.access_token) localStorage.setItem('apoc2_ebay_access', data.access_token);
+      const sc=(data.shipping_policies||[]).length, rc=(data.return_policies||[]).length, pc=(data.payment_policies||[]).length;
+      document.getElementById('ebay-acct').textContent = `✓ Connected · ${sc} shipping · ${rc} return · ${pc} payment policies`;
+      // Restore saved policy selections
+      const p = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
+      if (p.ship) document.getElementById('ship-policy').value = p.ship;
+      if (p.ret)  document.getElementById('ret-policy').value  = p.ret;
+      if (p.pay)  document.getElementById('pay-policy').value  = p.pay;
+    }
+  } catch(err) {
+    document.getElementById('ebay-acct').textContent = 'Offline — policies cached';
+  }
+}
+
+/* ═══ POLICIES & DEFAULTS ═══ */
+function fillDropdown(selId, list) {
+  const sel = document.getElementById(selId);
+  if (!list.length) return;
+  sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+}
+
+function saveEbayPolicies(data) {
+  localStorage.setItem('apoc2_ebay', JSON.stringify({
+    shipping: data.shipping_policies || [],
+    return:   data.return_policies || [],
+    payment:  data.payment_policies || [],
+  }));
+}
+
+function savePolicies() {
+  localStorage.setItem('apoc2_policies', JSON.stringify({
+    ship:      document.getElementById('ship-policy').value,
+    ret:       document.getElementById('ret-policy').value,
+    pay:       document.getElementById('pay-policy').value,
+    fmt:       document.getElementById('list-fmt').value,
+    dur:       document.getElementById('list-dur').value,
+    disp:      document.getElementById('dispatch').value,
+    price:     document.getElementById('price-inp').value,
+    binPrice:  document.getElementById('bin-price-inp').value,
+    bestOffer: document.getElementById('best-offer-chk').checked,
+    minOffer:  document.getElementById('min-offer-inp').value,
+  }));
+  flashSave();
+}
+
+function onFormatChange() {
+  const fmt = document.getElementById('list-fmt').value;
+  const durSel = document.getElementById('list-dur');
+  const priceLbl = document.getElementById('price-lbl-1');
+  const priceGroup2 = document.getElementById('price-group-2');
+  if (fmt === 'Chinese') {
+    durSel.innerHTML = '<option value="Days_1">1 Day</option><option value="Days_3">3 Days</option><option value="Days_5">5 Days</option><option value="Days_7" selected>7 Days</option><option value="Days_10">10 Days</option>';
+    priceLbl.textContent = 'Starting Bid ($)';
+    priceGroup2.style.display = '';
+  } else {
+    durSel.innerHTML = '<option value="GTC">Good Till Cancelled</option><option value="Days_30">30 Days</option><option value="Days_7">7 Days</option>';
+    priceLbl.textContent = 'Buy It Now Price ($)';
+    priceGroup2.style.display = 'none';
+  }
+}
+
+function onOfferToggle() {
+  document.getElementById('min-offer-wrap').style.display =
+    document.getElementById('best-offer-chk').checked ? '' : 'none';
+}
+
+function saveZip() {
+  localStorage.setItem('apoc2_zip', document.getElementById('zip-inp').value);
+  flashSave();
+}
+
+function saveApiUrl() {
+  const v = document.getElementById('api-url').value.trim();
+  if (v) localStorage.setItem('apoc2_api', v);
+  else localStorage.removeItem('apoc2_api');
+  flashSave();
+}
+
+function flashSave() {
+  const n = document.getElementById('save-note');
+  n.classList.add('show');
+  clearTimeout(n._t);
+  n._t = setTimeout(() => n.classList.remove('show'), 2000);
+}
+
+/* ═══ LOAD SAVED STATE ═══ */
+function loadSaved() {
+  // eBay policies
+  const ebay = JSON.parse(localStorage.getItem('apoc2_ebay') || 'null');
+  const rt = localStorage.getItem('apoc2_ebay_refresh');
+  if (ebay) {
+    fillDropdown('ship-policy', ebay.shipping || []);
+    fillDropdown('ret-policy',  ebay.return || []);
+    fillDropdown('pay-policy',  ebay.payment || []);
+    document.getElementById('ebay-nc').style.display = 'none';
+    document.getElementById('ebay-cn').style.display = 'block';
+    if (rt) {
+      document.getElementById('ebay-acct').textContent = '✓ Reconnecting...';
+    } else {
+      document.getElementById('ebay-acct').textContent = 'Policies cached · Reconnect for fresh token';
+    }
+  }
+  // Restore policy selections
+  const p = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
+  if (p.ship) document.getElementById('ship-policy').value = p.ship;
+  if (p.ret)  document.getElementById('ret-policy').value  = p.ret;
+  if (p.pay)  document.getElementById('pay-policy').value  = p.pay;
+  if (p.fmt) { document.getElementById('list-fmt').value = p.fmt; onFormatChange(); }
+  if (p.dur)  document.getElementById('list-dur').value    = p.dur;
+  if (p.disp) document.getElementById('dispatch').value    = p.disp;
+  if (p.price)    document.getElementById('price-inp').value     = p.price;
+  if (p.binPrice) document.getElementById('bin-price-inp').value = p.binPrice;
+  if (p.bestOffer) { document.getElementById('best-offer-chk').checked = true; onOfferToggle(); }
+  if (p.minOffer)  document.getElementById('min-offer-inp').value = p.minOffer;
+  // ZIP
+  const z = localStorage.getItem('apoc2_zip');
+  if (z) document.getElementById('zip-inp').value = z;
+  // API URL
+  const apiUrl = localStorage.getItem('apoc2_api');
+  if (apiUrl) document.getElementById('api-url').value = apiUrl;
+  // Platform usernames
+  loadPlatformUsers();
+  // Auto-reconnect eBay
+  if (rt) autoReconnectEbay(rt);
+}
+
+loadSaved();
+</script>
+</body>
+</html>

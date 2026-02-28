@@ -112,7 +112,11 @@
 </style>
 </head><body>
 <div class="wrap">
-  <a href="/" class="back-link">← Back to single lister</a>
+  <div style="display:flex;gap:12px;margin-bottom:12px">
+    <a href="index.html" class="back-link">← New Listing</a>
+    <a href="settings.html" class="back-link">Settings</a>
+    <a href="inventory.html" class="back-link">Inventory</a>
+  </div>
   <div class="hdr">
     <div class="hdr-icon">⚡</div>
     <h1>BULK LISTER</h1>
@@ -124,7 +128,7 @@
 </div>
 
 <script>
-const API = localStorage.getItem('apoc2_api') || 'https://tien1868-apoc-app.hf.space';
+const API = localStorage.getItem('apoc2_api') || 'https://pm9d3cd2bq.us-east-1.awsapprunner.com';
 
 /* ═══════════════════════════════════════════════════
    STATE

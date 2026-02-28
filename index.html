@@ -52,19 +52,7 @@
     .card-badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);padding:3px 8px;border-radius:4px;background:var(--surf2);border:1px solid var(--bdr)}
     .card-body{padding:22px}
 
-    /* EBAY */
-    .ebay-connect-row{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:16px 18px;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);margin-bottom:16px}
-    .ebay-icon-box{width:42px;height:42px;border-radius:8px;background:var(--blue-d);border:1px solid rgba(91,156,246,.28);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
-    .ebay-info{flex:1}
-    .ebay-info-title{font-size:13px;font-weight:700;margin-bottom:2px}
-    .ebay-info-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--t2)}
-    .ebay-connect-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:12px 18px;border-radius:var(--r);background:var(--blue);border:1px solid var(--blue);color:#000;font-family:'Syne',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;width:100%;text-decoration:none}
-    .ebay-connect-btn:hover{background:#7ab3ff;box-shadow:0 4px 16px rgba(91,156,246,.25);transform:translateY(-1px)}
-    .ebay-complete-btn{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:var(--r);background:var(--surf2);border:1px solid var(--bdr-h);color:var(--t2);font-family:'Syne',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
-    .ebay-complete-btn:hover{background:var(--surf3);color:var(--text)}
-    .connected-badge{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--green-d);border:1px solid var(--green-b);border-radius:var(--r);font-family:'DM Mono',monospace;font-size:11px;color:var(--green);margin-bottom:16px}
-    .e-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;box-shadow:0 0 6px currentColor;animation:blink 2.5s infinite}
-    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    /* (eBay auth UI moved to settings.html) */
 
     .g3{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
     .g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
@@ -311,6 +299,7 @@
       <div class="logo-sub">Tags Technologies · Garment Intelligence Platform</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
+      <a href="settings.html" class="nav-btn">Settings</a>
       <a href="inventory.html" class="nav-btn">Inventory</a>
       <a href="bulk.html" class="nav-btn">Bulk Upload</a>
       <div class="hdr-meta">
@@ -320,128 +309,14 @@
     </div>
   </header>
 
-  <!-- ── eBay CONNECTION ── -->
-  <div class="card ebay-card" id="ebay-card">
-    <div class="card-hd">
-      <div class="card-icon">⚡</div>
-      <div class="card-title">eBay Marketplace Connection</div>
-      <div class="card-badge">OAuth 2.0</div>
-    </div>
-    <div class="card-body">
-
-      <div id="ebay-nc">
-        <div class="ebay-connect-row">
-          <div class="ebay-icon-box">🛒</div>
-          <div class="ebay-info">
-            <div class="ebay-info-title">Connect your eBay seller account</div>
-            <div class="ebay-info-sub">Loads your policies and enables live publishing</div>
-          </div>
-          <a class="ebay-connect-btn" href="#" onclick="startAuth(event)">Connect eBay Account →</a>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
-          <button class="ebay-complete-btn" onclick="completeAuth()">Complete Authorization</button>
-          <span id="auth-msg" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t2)"></span>
-        </div>
-      </div>
-
-      <div id="ebay-cn" style="display:none">
-        <div class="connected-badge" style="justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:8px">
-            <div class="e-dot"></div>
-            <span id="ebay-acct">Connected</span>
-          </div>
-          <button class="ebay-complete-btn" style="padding:6px 12px;font-size:10px" onclick="document.getElementById('ebay-cn').style.display='none';document.getElementById('ebay-nc').style.display='block'">Reconnect</button>
-        </div>
-      </div>
-
-      <div class="sec-div" style="margin-top:0"></div>
-
-      <!-- POLICIES — 3 cols -->
-      <div class="g3" style="margin-bottom:14px">
-        <div>
-          <label class="lbl">Shipping Policy</label>
-          <select class="f-sel" id="ship-policy" onchange="savePolicies()">
-            <option value="">— Connect eBay first —</option>
-          </select>
-        </div>
-        <div>
-          <label class="lbl">Return Policy</label>
-          <select class="f-sel" id="ret-policy" onchange="savePolicies()">
-            <option value="">— Connect eBay first —</option>
-          </select>
-        </div>
-        <div>
-          <label class="lbl">Payment Policy</label>
-          <select class="f-sel" id="pay-policy" onchange="savePolicies()">
-            <option value="">— Connect eBay first —</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- ZIP + listing format + duration -->
-      <div class="g3">
-        <div>
-          <label class="lbl">Origin ZIP Code
-            <span id="zip-status" class="zip-status" style="color:var(--t3);margin-left:8px"></span>
-          </label>
-          <input class="f-inp mono" id="zip-inp" type="text" value="" placeholder="Detecting..." maxlength="10" oninput="saveZip()" />
-        </div>
-        <div>
-          <label class="lbl">Listing Format</label>
-          <select class="f-sel" id="list-fmt" onchange="onFormatChange();savePolicies()">
-            <option value="FixedPriceItem">Fixed Price</option>
-            <option value="Chinese">Auction</option>
-          </select>
-        </div>
-        <div>
-          <label class="lbl">Listing Duration</label>
-          <select class="f-sel" id="list-dur" onchange="savePolicies()">
-            <option value="GTC">Good Till Cancelled</option>
-            <option value="Days_30">30 Days</option>
-            <option value="Days_7">7 Days</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Dispatch + price fields -->
-      <div class="g3" style="margin-top:12px">
-        <div>
-          <label class="lbl">Dispatch Time</label>
-          <select class="f-sel" id="dispatch" onchange="savePolicies()">
-            <option value="1">1 business day</option>
-            <option value="2">2 business days</option>
-            <option value="3" selected>3 business days</option>
-            <option value="5">5 business days</option>
-          </select>
-        </div>
-        <div id="price-group-1">
-          <label class="lbl" id="price-lbl-1">Buy It Now Price ($)</label>
-          <input class="f-inp mono" id="price-inp" type="number" step="0.01" min="0.99" placeholder="0.00" oninput="savePolicies()" />
-        </div>
-        <div id="price-group-2" style="display:none">
-          <label class="lbl">Buy It Now ($) <span style="color:var(--t3)">optional</span></label>
-          <input class="f-inp mono" id="bin-price-inp" type="number" step="0.01" min="0" placeholder="Optional" oninput="savePolicies()" />
-        </div>
-      </div>
-
-      <!-- Best Offer (fixed price only) -->
-      <div id="offer-wrap" style="margin-top:12px">
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <label class="toggle">
-            <input type="checkbox" id="best-offer-chk" onchange="onOfferToggle();savePolicies()">
-            <span class="toggle-track"></span>
-          </label>
-          <label class="toggle-label" for="best-offer-chk">Accept Best Offer</label>
-          <div id="min-offer-wrap" style="display:none;margin-left:12px">
-            <input class="f-inp mono" id="min-offer-inp" type="number" step="0.01" min="0" placeholder="Min offer $" style="width:140px" oninput="savePolicies()" />
-          </div>
-        </div>
-      </div>
-      <div style="display:flex;justify-content:flex-end;margin-top:8px">
-        <span class="save-note" id="save-note">✓ Settings saved</span>
-      </div>
-
-    </div>
+  <!-- ── QUICK STATUS BAR ── -->
+  <div id="status-bar" style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:14px 18px;background:var(--surf);border:1px solid var(--bdr);border-radius:12px;margin-bottom:14px;font-family:'DM Mono',monospace;font-size:11px">
+    <span id="status-ebay" style="color:var(--t3)">eBay: Not Connected</span>
+    <span style="color:var(--t3)">·</span>
+    <span id="status-zip" style="color:var(--t3)">ZIP: —</span>
+    <span style="color:var(--t3)">·</span>
+    <span id="status-platforms" style="color:var(--t2)"></span>
+    <a href="settings.html" style="margin-left:auto;color:var(--amber);text-decoration:none;font-size:10px;border:1px solid var(--amber-b);padding:4px 10px;border-radius:4px">Settings</a>
   </div>
 
   <!-- ── STEP 1: CAPTURE ── -->
@@ -538,103 +413,51 @@
 /* ═══════════════════════════════════════════════════════════
    PERSIST — policies + zip survive page refresh
 ═══════════════════════════════════════════════════════════ */
-function savePolicies() {
-  localStorage.setItem('apoc2_policies', JSON.stringify({
-    ship:      document.getElementById('ship-policy').value,
-    ret:       document.getElementById('ret-policy').value,
-    pay:       document.getElementById('pay-policy').value,
-    fmt:       document.getElementById('list-fmt').value,
-    dur:       document.getElementById('list-dur').value,
-    disp:      document.getElementById('dispatch').value,
-    gender:    document.getElementById('gender-sel').value,
-    price:     document.getElementById('price-inp').value,
-    binPrice:  document.getElementById('bin-price-inp').value,
-    bestOffer: document.getElementById('best-offer-chk').checked,
-    minOffer:  document.getElementById('min-offer-inp').value,
-  }));
-  flashSave();
-}
-function onFormatChange() {
-  const fmt = document.getElementById('list-fmt').value;
-  const durSel = document.getElementById('list-dur');
-  const priceLbl = document.getElementById('price-lbl-1');
-  const priceGroup2 = document.getElementById('price-group-2');
-  const offerWrap = document.getElementById('offer-wrap');
-  if (fmt === 'Chinese') {
-    durSel.innerHTML = '<option value="Days_1">1 Day</option><option value="Days_3">3 Days</option><option value="Days_5">5 Days</option><option value="Days_7" selected>7 Days</option><option value="Days_10">10 Days</option>';
-    priceLbl.textContent = 'Starting Bid ($)';
-    priceGroup2.style.display = '';
-  } else {
-    durSel.innerHTML = '<option value="GTC">Good Till Cancelled</option><option value="Days_30">30 Days</option><option value="Days_7">7 Days</option>';
-    priceLbl.textContent = 'Buy It Now Price ($)';
-    priceGroup2.style.display = 'none';
-  }
-}
-function onOfferToggle() {
-  const checked = document.getElementById('best-offer-chk').checked;
-  document.getElementById('min-offer-wrap').style.display = checked ? '' : 'none';
-}
-function saveZip() {
-  localStorage.setItem('apoc2_zip', document.getElementById('zip-inp').value);
-}
-function flashSave() {
-  const n = document.getElementById('save-note');
-  n.classList.add('show');
-  clearTimeout(n._t);
-  n._t = setTimeout(() => n.classList.remove('show'), 2000);
-}
-function saveEbayPolicies(data) {
-  localStorage.setItem('apoc2_ebay', JSON.stringify({
-    shipping: data.shipping_policies || [],
-    return:   data.return_policies || [],
-    payment:  data.payment_policies || [],
-  }));
-}
-function fillDropdownFromList(selId, list) {
-  const sel = document.getElementById(selId);
-  if (!list.length) return;
-  sel.innerHTML = list.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-}
 function loadSaved() {
-  // Restore cached eBay policy lists so dropdowns are populated instantly
+  // Read settings from localStorage (configured on settings.html)
   const ebay = JSON.parse(localStorage.getItem('apoc2_ebay') || 'null');
   const rt = localStorage.getItem('apoc2_ebay_refresh');
-  if (ebay) {
-    fillDropdownFromList('ship-policy', ebay.shipping || []);
-    fillDropdownFromList('ret-policy',  ebay.return || []);
-    fillDropdownFromList('pay-policy',  ebay.payment || []);
-    document.getElementById('ebay-nc').style.display = 'none';
-    document.getElementById('ebay-cn').style.display = 'block';
-    document.getElementById('ebay-card').className = 'card ebay-card linked';
-    if (rt) {
-      document.getElementById('ebay-acct').textContent = '✓ Reconnecting...';
-      document.getElementById('hdr-ebay').textContent = 'eBay: Reconnecting...';
-      document.getElementById('hdr-ebay').style.color = 'var(--amber)';
-      ebayConnected = true;
-    } else {
-      document.getElementById('ebay-acct').textContent = 'Policies loaded · Reconnect once to enable auto-login';
-      document.getElementById('hdr-ebay').textContent = 'eBay: Reconnect needed';
-      document.getElementById('hdr-ebay').style.color = 'var(--amber)';
-      ebayConnected = false;
-    }
-  }
-  // Restore saved selections
+  const token = localStorage.getItem('apoc2_ebay_access');
   const p = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
-  if (p.ship)   document.getElementById('ship-policy').value = p.ship;
-  if (p.ret)    document.getElementById('ret-policy').value  = p.ret;
-  if (p.pay)    document.getElementById('pay-policy').value  = p.pay;
-  if (p.fmt) { document.getElementById('list-fmt').value = p.fmt; onFormatChange(); }
-  if (p.dur)    document.getElementById('list-dur').value    = p.dur;
-  if (p.disp)   document.getElementById('dispatch').value    = p.disp;
-  if (p.gender) document.getElementById('gender-sel').value  = p.gender;
-  if (p.price)    document.getElementById('price-inp').value     = p.price;
-  if (p.binPrice) document.getElementById('bin-price-inp').value = p.binPrice;
-  if (p.bestOffer) { document.getElementById('best-offer-chk').checked = true; onOfferToggle(); }
-  if (p.minOffer)  document.getElementById('min-offer-inp').value = p.minOffer;
   const z = localStorage.getItem('apoc2_zip');
-  if (z) { document.getElementById('zip-inp').value = z; setZipStatus(z, 'saved'); }
+
+  // Update status bar
+  const ebayEl = document.getElementById('status-ebay');
+  const hdrEl = document.getElementById('hdr-ebay');
+  if (token || ebay) {
+    ebayEl.textContent = 'eBay: ✓ Connected';
+    ebayEl.style.color = 'var(--green)';
+    hdrEl.textContent = 'eBay: Connected';
+    hdrEl.style.color = 'var(--green)';
+    ebayConnected = true;
+  }
+  const zipEl = document.getElementById('status-zip');
+  const hdrZip = document.getElementById('hdr-zip');
+  if (z) {
+    zipEl.textContent = 'ZIP: ' + z;
+    zipEl.style.color = 'var(--t2)';
+    hdrZip.textContent = 'ZIP: ' + z;
+    hdrZip.style.color = 'var(--t2)';
+  }
+
+  // Show connected platforms count
+  const platNames = [];
+  if (localStorage.getItem('apoc2_poshmark_user')) platNames.push('Poshmark');
+  if (localStorage.getItem('apoc2_mercari_user')) platNames.push('Mercari');
+  if (localStorage.getItem('apoc2_depop_user')) platNames.push('Depop');
+  if (localStorage.getItem('apoc2_fb_enabled') === '1') platNames.push('Facebook');
+  const platEl = document.getElementById('status-platforms');
+  platEl.textContent = platNames.length ? platNames.join(', ') : 'No other platforms';
+
+  // Restore saved gender selection if it exists
+  if (p.gender) {
+    const gsel = document.getElementById('gender-sel');
+    if (gsel) gsel.value = p.gender;
+  }
+
   loadPlatforms();
-  // Auto-reconnect eBay using refresh token
+
+  // Auto-reconnect eBay to refresh the token
   if (rt) autoReconnectEbay(rt);
 }
 async function autoReconnectEbay(refreshToken) {
@@ -646,160 +469,37 @@ async function autoReconnectEbay(refreshToken) {
     const data = await resp.json();
     if (data.error) {
       localStorage.removeItem('apoc2_ebay_refresh');
-      document.getElementById('ebay-acct').textContent = 'Policies loaded · Reconnect to publish';
+      document.getElementById('status-ebay').textContent = 'eBay: Reconnect needed';
+      document.getElementById('status-ebay').style.color = 'var(--amber)';
       document.getElementById('hdr-ebay').textContent = 'eBay: Reconnect needed';
       document.getElementById('hdr-ebay').style.color = 'var(--amber)';
       ebayConnected = false;
       return;
     }
     if (data.connected) {
-      fillDropdownFromList('ship-policy', data.shipping_policies || []);
-      fillDropdownFromList('ret-policy',  data.return_policies || []);
-      fillDropdownFromList('pay-policy',  data.payment_policies || []);
-      saveEbayPolicies(data);
       if (data.access_token) localStorage.setItem('apoc2_ebay_access', data.access_token);
-      const sc=(data.shipping_policies||[]).length, rc=(data.return_policies||[]).length, pc=(data.payment_policies||[]).length;
-      document.getElementById('ebay-acct').textContent = `✓ Connected · ${sc} shipping · ${rc} return · ${pc} payment policies`;
+      // Update cached policies in localStorage
+      localStorage.setItem('apoc2_ebay', JSON.stringify({
+        shipping: data.shipping_policies || [],
+        return:   data.return_policies || [],
+        payment:  data.payment_policies || [],
+      }));
+      document.getElementById('status-ebay').textContent = 'eBay: ✓ Connected';
+      document.getElementById('status-ebay').style.color = 'var(--green)';
       document.getElementById('hdr-ebay').textContent = 'eBay: Connected';
       document.getElementById('hdr-ebay').style.color = 'var(--green)';
-      // Restore saved policy selections after fresh dropdown fill
-      const p = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
-      if (p.ship) document.getElementById('ship-policy').value = p.ship;
-      if (p.ret)  document.getElementById('ret-policy').value  = p.ret;
-      if (p.pay)  document.getElementById('pay-policy').value  = p.pay;
       ebayConnected = true;
     }
   } catch(err) {
-    document.getElementById('ebay-acct').textContent = 'Policies loaded · Reconnect to publish';
+    document.getElementById('status-ebay').textContent = 'eBay: Offline';
+    document.getElementById('status-ebay').style.color = 'var(--amber)';
     document.getElementById('hdr-ebay').textContent = 'eBay: Offline';
     document.getElementById('hdr-ebay').style.color = 'var(--amber)';
     ebayConnected = false;
   }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   ZIP — GPS first, IP fallback
-═══════════════════════════════════════════════════════════ */
-function setZipStatus(zip, src) {
-  const el = document.getElementById('zip-status');
-  const hdr = document.getElementById('hdr-zip');
-  if (src === 'gps')   { el.textContent = '✓ GPS'; el.style.color = 'var(--green)'; }
-  if (src === 'ip')    { el.textContent = '✓ IP'; el.style.color = 'var(--amber)'; }
-  if (src === 'saved') { el.textContent = '↺ Saved'; el.style.color = 'var(--t2)'; }
-  hdr.textContent = 'ZIP: ' + zip;
-  hdr.style.color = src === 'gps' ? 'var(--green)' : 'var(--t2)';
-  setTimeout(() => { if (src !== 'saved') el.textContent = ''; }, 5000);
-}
-
-async function zipFromIP() {
-  try {
-    const r = await fetch('https://ipinfo.io/json');
-    const d = await r.json();
-    return d.postal || null;
-  } catch { return null; }
-}
-
-async function zipFromCoords(lat, lon) {
-  try {
-    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
-    const d = await r.json();
-    return d.address?.postcode?.split('-')[0] || null;
-  } catch { return null; }
-}
-
-function detectZip() {
-  const saved = localStorage.getItem('apoc2_zip');
-  if (saved) { loadSaved(); return; }
-
-  const inp = document.getElementById('zip-inp');
-  inp.placeholder = 'Detecting via GPS...';
-
-  if (!navigator.geolocation) { fallbackIP(); return; }
-
-  navigator.geolocation.getCurrentPosition(
-    async pos => {
-      const zip = await zipFromCoords(pos.coords.latitude, pos.coords.longitude);
-      if (zip) {
-        inp.value = zip;
-        localStorage.setItem('apoc2_zip', zip);
-        setZipStatus(zip, 'gps');
-      } else { fallbackIP(); }
-    },
-    async () => { fallbackIP(); },
-    { timeout: 6000, maximumAge: 600000 }
-  );
-}
-
-async function fallbackIP() {
-  const zip = await zipFromIP();
-  const inp = document.getElementById('zip-inp');
-  if (zip) {
-    inp.value = zip;
-    localStorage.setItem('apoc2_zip', zip);
-    setZipStatus(zip, 'ip');
-  } else {
-    inp.placeholder = 'Enter ZIP manually';
-  }
-}
-
-/* ═══════════════════════════════════════════════════════════
-   eBay AUTH
-═══════════════════════════════════════════════════════════ */
 let ebayConnected = false;
-async function startAuth(e) {
-  e.preventDefault();
-  const msg = document.getElementById('auth-msg');
-  msg.textContent = 'Loading eBay authorization...';
-  try {
-    const resp = await fetch(`${API}/ebay-auth-url`);
-    const data = await resp.json();
-    if (data.error) { msg.textContent = 'Error: ' + data.error; return; }
-    window.open(data.url, '_blank');
-    msg.textContent = 'Complete sign-in on eBay, then click Complete Authorization ↓';
-  } catch(err) {
-    msg.textContent = 'Failed to get auth URL: ' + err.message;
-  }
-}
-async function completeAuth() {
-  const msg = document.getElementById('auth-msg');
-  msg.textContent = 'Completing authorization...';
-  try {
-    const resp = await fetch(`${API}/ebay-complete`, { method: 'POST' });
-    const data = await resp.json();
-    if (data.error) { msg.textContent = 'Error: ' + data.error; return; }
-    if (!data.connected) { msg.textContent = 'Authorization incomplete. Sign in on eBay first.'; return; }
-
-    msg.textContent = '';
-    document.getElementById('ebay-nc').style.display = 'none';
-    document.getElementById('ebay-cn').style.display = 'block';
-    const sc = (data.shipping_policies||[]).length;
-    const rc = (data.return_policies||[]).length;
-    const pc = (data.payment_policies||[]).length;
-    document.getElementById('ebay-acct').textContent = `✓ Connected · ${sc} shipping · ${rc} return · ${pc} payment policies`;
-    document.getElementById('hdr-ebay').textContent = 'eBay: Connected';
-    document.getElementById('hdr-ebay').style.color = 'var(--green)';
-    document.getElementById('ebay-card').className = 'card ebay-card linked';
-
-    function fillPolicy(selId, policies) {
-      const sel = document.getElementById(selId);
-      sel.innerHTML = policies.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
-      const saved = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
-      const key = selId.replace('-policy','');
-      if (saved[key]) sel.value = saved[key];
-    }
-    fillPolicy('ship-policy', data.shipping_policies || []);
-    fillPolicy('ret-policy',  data.return_policies || []);
-    fillPolicy('pay-policy',  data.payment_policies || []);
-
-    saveEbayPolicies(data);
-    if (data.access_token) localStorage.setItem('apoc2_ebay_access', data.access_token);
-    if (data.refresh_token) localStorage.setItem('apoc2_ebay_refresh', data.refresh_token);
-    ebayConnected = true;
-    savePolicies();
-  } catch(err) {
-    msg.textContent = 'Connection failed: ' + err.message;
-  }
-}
 
 /* ═══════════════════════════════════════════════════════════
    FILES
@@ -1805,9 +1505,9 @@ async function publish() {
       description: document.getElementById('desc-area')?.value || analysisData.desc,
       ship_id:     policies.ship || '',
       ret_id:      policies.ret  || '',
-      postal:      document.getElementById('zip-inp')?.value || '10001',
-      duration:    document.getElementById('list-dur')?.value || 'GTC',
-      dispatch:    document.getElementById('dispatch')?.value || '3',
+      postal:      localStorage.getItem('apoc2_zip') || '10001',
+      duration:    policies.dur || 'GTC',
+      dispatch:    policies.disp || '3',
       brand:       document.getElementById('sp-brand')?.value || '',
       style_name:  document.getElementById('sp-stylename')?.value || '',
       gender:      document.getElementById('sp-dept')?.value || '',
@@ -1855,11 +1555,11 @@ async function publish() {
       m_shoulder:  document.getElementById('m-shoulder')?.value || '',
       m_waist:     document.getElementById('m-waist')?.value || '',
       m_inseam:    document.getElementById('m-inseam')?.value || '',
-      listing_format: document.getElementById('list-fmt')?.value || 'FixedPriceItem',
-      start_price:    document.getElementById('price-inp')?.value || '',
-      buy_now_price:  document.getElementById('bin-price-inp')?.value || '',
-      best_offer:     document.getElementById('best-offer-chk')?.checked || false,
-      min_offer:      document.getElementById('min-offer-inp')?.value || '',
+      listing_format: policies.fmt || 'FixedPriceItem',
+      start_price:    policies.price || '',
+      buy_now_price:  policies.binPrice || '',
+      best_offer:     policies.bestOffer || false,
+      min_offer:      policies.minOffer || '',
       ebay_token:     localStorage.getItem('apoc2_ebay_access') || '',
     };
     const resp = await fetch(`${API}/publish-multi`, {
@@ -1906,11 +1606,6 @@ function listAnother() {
   pbtn.onclick = function(){ publish(); };
   const bg = document.getElementById('bg-btn');
   bg.innerHTML = 'Remove Background'; bg.style.color = ''; bg.style.borderColor = '';
-  document.getElementById('price-inp').value = '';
-  document.getElementById('bin-price-inp').value = '';
-  document.getElementById('best-offer-chk').checked = false;
-  document.getElementById('min-offer-inp').value = '';
-  onOfferToggle();
   // Clear measurements
   ['m-chest','m-length','m-sleeve','m-shoulder','m-waist','m-inseam'].forEach(id => {
     const el = document.getElementById(id); if (el) el.value = '';
@@ -1922,7 +1617,6 @@ function listAnother() {
    INIT
 ═══════════════════════════════════════════════════════════ */
 loadSaved();
-detectZip();
 </script>
 </body>
 </html>

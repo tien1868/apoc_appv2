@@ -88,6 +88,7 @@ body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-he
   <h1>APOC<sup>2</sup> Inventory</h1>
   <div style="display:flex;gap:8px;align-items:center">
     <a href="index.html">+ New Listing</a>
+    <a href="settings.html">Settings</a>
     <a href="bulk.html">Bulk Upload</a>
   </div>
 </div>
@@ -226,14 +227,22 @@ function closeSoldModal() {
   soldItemId = null;
 }
 
-// Deep links to each platform's listing/closet management page
-const PLATFORM_LINKS = {
-  ebay:      { name: 'eBay Seller Hub',       url: 'https://www.ebay.com/sh/lst/active' },
-  poshmark:  { name: 'Poshmark My Closet',    url: 'https://poshmark.com/closet' },
-  mercari:   { name: 'Mercari My Listings',    url: 'https://www.mercari.com/mypage/listings/' },
-  depop:     { name: 'Depop My Shop',          url: 'https://www.depop.com/sellinghub/' },
-  facebook:  { name: 'Facebook Marketplace',   url: 'https://www.facebook.com/marketplace/you/selling' },
-};
+// Deep links to each platform — personalized with stored usernames
+function getPlatformLinks() {
+  const poshUser = localStorage.getItem('apoc2_poshmark_user');
+  const mercUser = localStorage.getItem('apoc2_mercari_user');
+  const depopUser = localStorage.getItem('apoc2_depop_user');
+  return {
+    ebay:      { name: 'eBay Seller Hub',       url: 'https://www.ebay.com/sh/lst/active' },
+    poshmark:  { name: poshUser ? `Poshmark @${poshUser}` : 'Poshmark My Closet',
+                 url: poshUser ? `https://poshmark.com/closet/${poshUser}` : 'https://poshmark.com/closet' },
+    mercari:   { name: mercUser ? `Mercari @${mercUser}` : 'Mercari My Listings',
+                 url: mercUser ? `https://www.mercari.com/u/${mercUser}/` : 'https://www.mercari.com/mypage/listings/' },
+    depop:     { name: depopUser ? `Depop @${depopUser}` : 'Depop My Shop',
+                 url: depopUser ? `https://www.depop.com/${depopUser}/` : 'https://www.depop.com/sellinghub/' },
+    facebook:  { name: 'Facebook Marketplace',   url: 'https://www.facebook.com/marketplace/you/selling' },
+  };
+}
 
 async function markSold(platform) {
   closeSoldModal();
@@ -288,6 +297,7 @@ async function markSold(platform) {
 }
 
 function showDelistModal(item, soldPlatform, platforms, ebayMsg) {
+  const PLATFORM_LINKS = getPlatformLinks();
   const msgEl = document.getElementById('delist-ebay-msg');
   msgEl.innerHTML = ebayMsg
     ? `<div class="delist-msg">${ebayMsg.includes('successfully') ? '✓ ' : '⚠ '}${ebayMsg}</div>`
