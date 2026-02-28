@@ -33,6 +33,8 @@
     .logo-sup{font-size:13px;font-weight:700;color:var(--amber);vertical-align:super;line-height:0}
     .logo-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--t3);letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
     .hdr-meta{font-family:'DM Mono',monospace;font-size:10px;text-align:right;line-height:2}
+    .nav-btn{font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);text-decoration:none;border:1px solid var(--amber-b);padding:6px 14px;border-radius:6px;letter-spacing:.06em;text-transform:uppercase;transition:all .15s;white-space:nowrap}
+    .nav-btn:hover{background:var(--amber-d);color:var(--text)}
 
     /* CARDS */
     .card{background:var(--surf);border:1px solid var(--bdr);border-radius:12px;margin-bottom:14px;overflow:hidden;transition:border-color .2s}
@@ -162,6 +164,30 @@
     .pub-res.ok{background:var(--green-d);border:1px solid var(--green-b);color:var(--green);display:block}
     .pub-res.er{background:var(--red-d);border:1px solid rgba(224,92,92,.22);color:var(--red);display:block}
 
+    /* PLATFORM CHECKBOXES */
+    .plat-chk{cursor:pointer;user-select:none}
+    .plat-chk input{display:none}
+    .plat-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;border:1px solid var(--bdr-h);background:var(--surf3);font-family:'DM Mono',monospace;font-size:11px;color:var(--t2);transition:all .15s}
+    .plat-dot{width:8px;height:8px;border-radius:50%;background:var(--t3);transition:all .15s}
+    .plat-chk input:checked+.plat-pill{border-color:var(--pc);color:var(--text);background:color-mix(in srgb,var(--pc) 12%,transparent)}
+    .plat-chk input:checked+.plat-pill .plat-dot{background:var(--pc);box-shadow:0 0 6px var(--pc)}
+    .plat-tag{font-size:8px;text-transform:uppercase;letter-spacing:.08em;padding:2px 5px;border-radius:3px;background:var(--surf2);border:1px solid var(--bdr);color:var(--t3)}
+    .plat-chk input:checked+.plat-pill .plat-tag{border-color:var(--pc);color:var(--pc)}
+
+    /* PLATFORM RESULT CARDS */
+    .plat-result{margin-top:10px;border:1px solid var(--bdr);border-radius:var(--r);overflow:hidden}
+    .plat-result-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surf2);border-bottom:1px solid var(--bdr);cursor:pointer}
+    .plat-result-hd .plat-name{font-family:'DM Mono',monospace;font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px}
+    .plat-result-hd .plat-status{font-family:'DM Mono',monospace;font-size:10px;padding:3px 8px;border-radius:4px}
+    .plat-result-body{padding:14px;font-family:'DM Mono',monospace;font-size:11px;line-height:1.7;color:var(--t2)}
+    .plat-result-body.collapsed{display:none}
+    .plat-field{margin-bottom:8px}
+    .plat-field-label{font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);margin-bottom:2px}
+    .plat-field-val{color:var(--text);word-break:break-word;white-space:pre-wrap}
+    .copy-btn{font-family:'DM Mono',monospace;font-size:9px;padding:3px 8px;border-radius:3px;border:1px solid var(--bdr-h);background:var(--surf3);color:var(--t2);cursor:pointer;transition:all .15s}
+    .copy-btn:hover{border-color:var(--amber-b);color:var(--amber)}
+    .copy-btn.copied{border-color:var(--green-b);color:var(--green)}
+
     .save-note{font-family:'DM Mono',monospace;font-size:9px;color:var(--green);letter-spacing:.06em;opacity:0;transition:opacity .3s}
     .save-note.show{opacity:1}
 
@@ -204,8 +230,9 @@
       .page{padding:0 14px 60px}
 
       /* header — stack logo + meta */
-      header{flex-direction:column;align-items:flex-start;gap:8px;padding:18px 0 18px}
+      header{flex-direction:column;align-items:flex-start;gap:10px;padding:18px 0 18px}
       .hdr-meta{text-align:left;font-size:9px}
+      .nav-btn{padding:5px 10px;font-size:9px}
 
       /* cards */
       .card-hd{padding:14px 16px}
@@ -283,9 +310,13 @@
       <div class="logo-main"><span class="logo-text">APOC</span><span class="logo-sup">2</span></div>
       <div class="logo-sub">Tags Technologies · Garment Intelligence Platform</div>
     </div>
-    <div class="hdr-meta">
-      <div id="hdr-ebay" style="color:var(--t3)">eBay: Not Connected</div>
-      <div id="hdr-zip" style="color:var(--t3)">ZIP: —</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="inventory.html" class="nav-btn">Inventory</a>
+      <a href="bulk.html" class="nav-btn">Bulk Upload</a>
+      <div class="hdr-meta">
+        <div id="hdr-ebay" style="color:var(--t3)">eBay: Not Connected</div>
+        <div id="hdr-zip" style="color:var(--t3)">ZIP: —</div>
+      </div>
     </div>
   </header>
 
@@ -461,14 +492,43 @@
   <div class="card" id="s3">
     <div class="card-hd">
       <div class="card-icon">03</div>
-      <div class="card-title">Review &amp; Publish to eBay</div>
+      <div class="card-title">Review &amp; Publish</div>
+      <a href="inventory.html" style="font-family:'DM Mono',monospace;font-size:10px;color:var(--amber);text-decoration:none;border:1px solid var(--amber-b);padding:4px 10px;border-radius:4px">Inventory</a>
     </div>
     <div class="card-body">
       <div id="pub-preview" style="background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--t2);line-height:1.8">
         Complete analysis above to see listing preview.
       </div>
-      <button class="btn pub" id="pbtn" onclick="publish()">Publish Listing to eBay →</button>
-      <div class="pub-res" id="pres"></div>
+
+      <!-- Platform selection -->
+      <div style="margin-bottom:14px;padding:14px 16px;background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r)">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px">Platforms</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px">
+          <label class="plat-chk" style="--pc:var(--blue)">
+            <input type="checkbox" id="plat-ebay" checked onchange="savePlatforms()">
+            <span class="plat-pill"><span class="plat-dot"></span>eBay<span class="plat-tag">API</span></span>
+          </label>
+          <label class="plat-chk" style="--pc:#e05c5c">
+            <input type="checkbox" id="plat-poshmark" onchange="savePlatforms()">
+            <span class="plat-pill"><span class="plat-dot"></span>Poshmark<span class="plat-tag">Copy</span></span>
+          </label>
+          <label class="plat-chk" style="--pc:#e8924a">
+            <input type="checkbox" id="plat-mercari" onchange="savePlatforms()">
+            <span class="plat-pill"><span class="plat-dot"></span>Mercari<span class="plat-tag">Copy</span></span>
+          </label>
+          <label class="plat-chk" style="--pc:#3ecf8e">
+            <input type="checkbox" id="plat-depop" onchange="savePlatforms()">
+            <span class="plat-pill"><span class="plat-dot"></span>Depop<span class="plat-tag">Copy</span></span>
+          </label>
+          <label class="plat-chk" style="--pc:#5b9cf6">
+            <input type="checkbox" id="plat-facebook" onchange="savePlatforms()">
+            <span class="plat-pill"><span class="plat-dot"></span>Facebook<span class="plat-tag">Copy</span></span>
+          </label>
+        </div>
+      </div>
+
+      <button class="btn pub" id="pbtn" onclick="publish()">Publish Listing →</button>
+      <div id="pres"></div>
     </div>
   </div>
 
@@ -504,12 +564,10 @@ function onFormatChange() {
     durSel.innerHTML = '<option value="Days_1">1 Day</option><option value="Days_3">3 Days</option><option value="Days_5">5 Days</option><option value="Days_7" selected>7 Days</option><option value="Days_10">10 Days</option>';
     priceLbl.textContent = 'Starting Bid ($)';
     priceGroup2.style.display = '';
-    if (offerWrap) offerWrap.style.display = 'none';
   } else {
     durSel.innerHTML = '<option value="GTC">Good Till Cancelled</option><option value="Days_30">30 Days</option><option value="Days_7">7 Days</option>';
     priceLbl.textContent = 'Buy It Now Price ($)';
     priceGroup2.style.display = 'none';
-    if (offerWrap) offerWrap.style.display = '';
   }
 }
 function onOfferToggle() {
@@ -575,6 +633,7 @@ function loadSaved() {
   if (p.minOffer)  document.getElementById('min-offer-inp').value = p.minOffer;
   const z = localStorage.getItem('apoc2_zip');
   if (z) { document.getElementById('zip-inp').value = z; setZipStatus(z, 'saved'); }
+  loadPlatforms();
   // Auto-reconnect eBay using refresh token
   if (rt) autoReconnectEbay(rt);
 }
@@ -598,6 +657,7 @@ async function autoReconnectEbay(refreshToken) {
       fillDropdownFromList('ret-policy',  data.return_policies || []);
       fillDropdownFromList('pay-policy',  data.payment_policies || []);
       saveEbayPolicies(data);
+      if (data.access_token) localStorage.setItem('apoc2_ebay_access', data.access_token);
       const sc=(data.shipping_policies||[]).length, rc=(data.return_policies||[]).length, pc=(data.payment_policies||[]).length;
       document.getElementById('ebay-acct').textContent = `✓ Connected · ${sc} shipping · ${rc} return · ${pc} payment policies`;
       document.getElementById('hdr-ebay').textContent = 'eBay: Connected';
@@ -732,6 +792,7 @@ async function completeAuth() {
     fillPolicy('pay-policy',  data.payment_policies || []);
 
     saveEbayPolicies(data);
+    if (data.access_token) localStorage.setItem('apoc2_ebay_access', data.access_token);
     if (data.refresh_token) localStorage.setItem('apoc2_ebay_refresh', data.refresh_token);
     ebayConnected = true;
     savePolicies();
@@ -1106,9 +1167,9 @@ function buildSeoTitle(d) {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   CONFIG — point at your HuggingFace Space
+   CONFIG — APOC² API (AWS App Runner)
 ═══════════════════════════════════════════════════════════ */
-const API = 'https://tien1868-apoc-app.hf.space';
+const API = 'https://pm9d3cd2bq.us-east-1.awsapprunner.com';
 
 /* ═══════════════════════════════════════════════════════════
    ANALYSIS — real API call
@@ -1634,13 +1695,102 @@ function upChars(el) {
 /* ═══════════════════════════════════════════════════════════
    PUBLISH — real API call
 ═══════════════════════════════════════════════════════════ */
+function getSelectedPlatforms() {
+  const plats = [];
+  ['ebay','poshmark','mercari','depop','facebook'].forEach(p => {
+    if (document.getElementById('plat-'+p)?.checked) plats.push(p);
+  });
+  return plats;
+}
+function savePlatforms() {
+  localStorage.setItem('apoc2_platforms', JSON.stringify(getSelectedPlatforms()));
+}
+function loadPlatforms() {
+  const saved = JSON.parse(localStorage.getItem('apoc2_platforms') || '["ebay"]');
+  saved.forEach(p => { const el = document.getElementById('plat-'+p); if (el) el.checked = true; });
+}
+function copyField(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied'; btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+function copyAllPlatform(plat, data) {
+  const text = `Title: ${data.title}\nPrice: $${data.price}\nBrand: ${data.brand}\nSize: ${data.size}\nColor: ${data.color}\nCondition: ${data.condition}\nCategory: ${data.category}\n\nDescription:\n${data.description}${data.hashtags ? '\n\nHashtags: '+data.hashtags : ''}`;
+  navigator.clipboard.writeText(text);
+}
+function renderPlatformResult(plat, result) {
+  const colors = {ebay:'var(--blue)',poshmark:'#e05c5c',mercari:'var(--amber)',depop:'var(--green)',facebook:'var(--blue)'};
+  const pc = colors[plat] || 'var(--t2)';
+  if (plat === 'ebay') {
+    if (result.success) {
+      return `<div class="plat-result"><div class="plat-result-hd"><span class="plat-name" style="color:${pc}">eBay</span><span class="plat-status" style="background:var(--green-d);color:var(--green)">Listed</span></div><div class="plat-result-body">Item ID: ${result.item_id}<br><a href="${result.url}" target="_blank" style="color:var(--amber)">${result.url}</a></div></div>`;
+    } else {
+      return `<div class="plat-result"><div class="plat-result-hd"><span class="plat-name" style="color:${pc}">eBay</span><span class="plat-status" style="background:var(--red-d);color:var(--red)">Failed</span></div><div class="plat-result-body">${result.error||'Unknown error'}</div></div>`;
+    }
+  }
+  const d = result.formatted_data;
+  const id = `plat-res-${plat}`;
+  return `<div class="plat-result"><div class="plat-result-hd" onclick="document.getElementById('${id}').classList.toggle('collapsed')"><span class="plat-name" style="color:${pc}">${plat.charAt(0).toUpperCase()+plat.slice(1)}</span><div style="display:flex;gap:6px;align-items:center"><span class="plat-status" style="background:color-mix(in srgb,${pc} 14%,transparent);color:${pc}">Ready to Copy</span><button class="copy-btn" onclick="event.stopPropagation();copyAllPlatform('${plat}',${JSON.stringify(d).replace(/'/g,"&#39;")});this.textContent='Copied!';this.classList.add('copied');setTimeout(()=>{this.textContent='Copy All';this.classList.remove('copied')},1500)">Copy All</button></div></div><div class="plat-result-body" id="${id}">
+    <div class="plat-field"><div class="plat-field-label">Title</div><div class="plat-field-val">${d.title}</div></div>
+    <div class="plat-field"><div class="plat-field-label">Price</div><div class="plat-field-val" style="color:var(--amber)">$${d.price}</div></div>
+    <div class="plat-field"><div class="plat-field-label">Brand / Size / Color / Condition</div><div class="plat-field-val">${d.brand} · ${d.size} · ${d.color} · ${d.condition}</div></div>
+    <div class="plat-field"><div class="plat-field-label">Description</div><div class="plat-field-val">${(d.description||'').replace(/</g,'&lt;')}</div></div>
+    ${d.hashtags ? `<div class="plat-field"><div class="plat-field-label">Hashtags</div><div class="plat-field-val" style="color:var(--amber)">${d.hashtags}</div></div>` : ''}
+  </div></div>`;
+}
+function saveToInventory(body, results) {
+  const inv = JSON.parse(localStorage.getItem('apoc2_inventory') || '[]');
+  const platforms = {};
+  for (const [plat, res] of Object.entries(results)) {
+    if (plat === 'ebay' && res.success) {
+      platforms.ebay = { status: 'active', item_id: res.item_id, url: res.url, listed_at: new Date().toISOString() };
+    } else if (plat !== 'ebay' && res.status === 'manual') {
+      platforms[plat] = { status: 'active', listed_at: new Date().toISOString() };
+    }
+  }
+  if (Object.keys(platforms).length === 0) return;
+  // Create small thumbnail from first file
+  let thumb = '';
+  const canvas = document.createElement('canvas');
+  const firstImg = document.querySelector('#dz img');
+  if (firstImg) {
+    canvas.width = 80; canvas.height = 80;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(firstImg, 0, 0, 80, 80);
+    thumb = canvas.toDataURL('image/jpeg', 0.5);
+  }
+  inv.push({
+    id: crypto.randomUUID(),
+    title: body.title || '',
+    brand: body.brand || '',
+    size: body.size || '',
+    price: parseFloat(body.start_price) || 0,
+    image_thumb: thumb,
+    platforms: platforms,
+    created_at: new Date().toISOString(),
+    sold_on: null, sold_at: null,
+  });
+  localStorage.setItem('apoc2_inventory', JSON.stringify(inv));
+}
+
 async function publish() {
   if (!analysisData) { alert('Run analysis first.'); return; }
+  const platforms = getSelectedPlatforms();
+  if (!platforms.length) { alert('Select at least one platform.'); return; }
   const b = document.getElementById('pbtn');
-  b.innerHTML='<span class="spin">◌</span>  Uploading photos & publishing...'; b.disabled=true;
+  b.innerHTML='<span class="spin">◌</span>  Publishing to ' + platforms.length + ' platform' + (platforms.length>1?'s':'') + '...'; b.disabled=true;
   try {
+    const images_b64 = [];
+    for (const f of files) {
+      const buf = await f.arrayBuffer();
+      images_b64.push(btoa(String.fromCharCode(...new Uint8Array(buf))));
+    }
     const policies = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
     const body = {
+      platforms: platforms,
+      analysis_data: analysisData,
+      images_b64: images_b64,
       title:       document.getElementById('ttl')?.value || analysisData.title,
       description: document.getElementById('desc-area')?.value || analysisData.desc,
       ship_id:     policies.ship || '',
@@ -1700,29 +1850,29 @@ async function publish() {
       buy_now_price:  document.getElementById('bin-price-inp')?.value || '',
       best_offer:     document.getElementById('best-offer-chk')?.checked || false,
       min_offer:      document.getElementById('min-offer-inp')?.value || '',
+      ebay_token:     localStorage.getItem('apoc2_ebay_access') || '',
     };
-    const resp = await fetch(`${API}/publish`, {
+    const resp = await fetch(`${API}/publish-multi`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify(body),
     });
-    const result = await resp.json();
+    const results = await resp.json();
     const r = document.getElementById('pres');
-    if (result.success) {
-      r.className='pub-res ok';
-      r.innerHTML=`✓ Listed successfully\nItem ID: ${result.item_id}\n${result.url}`;
-      b.innerHTML='List Another →'; b.disabled=false;
-      b.onclick = listAnother;
-    } else {
-      r.className='pub-res er';
-      r.textContent='✗ ' + (result.error || 'Publish failed');
-      b.innerHTML='Publish Listing to eBay →'; b.disabled=false;
+    let html = '';
+    for (const plat of platforms) {
+      if (results[plat]) html += renderPlatformResult(plat, results[plat]);
     }
+    r.innerHTML = html;
+    r.style.display = 'block';
+    saveToInventory(body, results);
+    b.innerHTML='List Another →'; b.disabled=false;
+    b.onclick = listAnother;
   } catch(err) {
-    b.innerHTML='Publish Listing to eBay →'; b.disabled=false;
+    b.innerHTML='Publish Listing →'; b.disabled=false;
     const r = document.getElementById('pres');
-    r.className='pub-res er';
-    r.textContent='✗ Network error: ' + err.message;
+    r.innerHTML = `<div class="plat-result"><div class="plat-result-hd"><span class="plat-name" style="color:var(--red)">Error</span></div><div class="plat-result-body">${err.message}</div></div>`;
+    r.style.display = 'block';
   }
 }
 
@@ -1737,12 +1887,12 @@ function listAnother() {
   document.getElementById('s2body').innerHTML =
     '<div style="text-align:center;padding:20px 0;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--t3)">Upload photos then run analysis</div>';
   document.getElementById('pub-preview').innerHTML = 'Complete analysis above to see listing preview.';
-  document.getElementById('pres').className = 'pub-res';
-  document.getElementById('pres').textContent = '';
+  document.getElementById('pres').innerHTML = '';
+  document.getElementById('pres').style.display = 'none';
   const abtn = document.getElementById('abtn');
   abtn.disabled = false; abtn.innerHTML = 'Analyze Garment →';
   const pbtn = document.getElementById('pbtn');
-  pbtn.disabled = false; pbtn.innerHTML = 'Publish Listing to eBay →';
+  pbtn.disabled = false; pbtn.innerHTML = 'Publish Listing →';
   pbtn.onclick = function(){ publish(); };
   const bg = document.getElementById('bg-btn');
   bg.innerHTML = 'Remove Background'; bg.style.color = ''; bg.style.borderColor = '';
