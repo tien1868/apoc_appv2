@@ -1715,7 +1715,10 @@ function copyField(btn, text) {
     setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
   });
 }
-function copyAllPlatform(plat, data) {
+const _platData = {}; // store formatted data for copy buttons
+function copyAllPlatform(plat) {
+  const data = _platData[plat];
+  if (!data) return;
   const text = `Title: ${data.title}\nPrice: $${data.price}\nBrand: ${data.brand}\nSize: ${data.size}\nColor: ${data.color}\nCondition: ${data.condition}\nCategory: ${data.category}\n\nDescription:\n${data.description}${data.hashtags ? '\n\nHashtags: '+data.hashtags : ''}`;
   navigator.clipboard.writeText(text);
 }
@@ -1730,13 +1733,15 @@ function renderPlatformResult(plat, result) {
     }
   }
   const d = result.formatted_data;
+  _platData[plat] = d; // store for copy button
   const id = `plat-res-${plat}`;
-  return `<div class="plat-result"><div class="plat-result-hd" onclick="document.getElementById('${id}').classList.toggle('collapsed')"><span class="plat-name" style="color:${pc}">${plat.charAt(0).toUpperCase()+plat.slice(1)}</span><div style="display:flex;gap:6px;align-items:center"><span class="plat-status" style="background:color-mix(in srgb,${pc} 14%,transparent);color:${pc}">Ready to Copy</span><button class="copy-btn" onclick="event.stopPropagation();copyAllPlatform('${plat}',${JSON.stringify(d).replace(/'/g,"&#39;")});this.textContent='Copied!';this.classList.add('copied');setTimeout(()=>{this.textContent='Copy All';this.classList.remove('copied')},1500)">Copy All</button></div></div><div class="plat-result-body" id="${id}">
-    <div class="plat-field"><div class="plat-field-label">Title</div><div class="plat-field-val">${d.title}</div></div>
+  const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return `<div class="plat-result"><div class="plat-result-hd" onclick="document.getElementById('${id}').classList.toggle('collapsed')"><span class="plat-name" style="color:${pc}">${plat.charAt(0).toUpperCase()+plat.slice(1)}</span><div style="display:flex;gap:6px;align-items:center"><span class="plat-status" style="background:color-mix(in srgb,${pc} 14%,transparent);color:${pc}">Ready to Copy</span><button class="copy-btn" onclick="event.stopPropagation();copyAllPlatform('${plat}');this.textContent='Copied!';this.classList.add('copied');setTimeout(()=>{this.textContent='Copy All';this.classList.remove('copied')},1500)">Copy All</button></div></div><div class="plat-result-body" id="${id}">
+    <div class="plat-field"><div class="plat-field-label">Title</div><div class="plat-field-val">${esc(d.title)}</div></div>
     <div class="plat-field"><div class="plat-field-label">Price</div><div class="plat-field-val" style="color:var(--amber)">$${d.price}</div></div>
-    <div class="plat-field"><div class="plat-field-label">Brand / Size / Color / Condition</div><div class="plat-field-val">${d.brand} · ${d.size} · ${d.color} · ${d.condition}</div></div>
-    <div class="plat-field"><div class="plat-field-label">Description</div><div class="plat-field-val">${(d.description||'').replace(/</g,'&lt;')}</div></div>
-    ${d.hashtags ? `<div class="plat-field"><div class="plat-field-label">Hashtags</div><div class="plat-field-val" style="color:var(--amber)">${d.hashtags}</div></div>` : ''}
+    <div class="plat-field"><div class="plat-field-label">Brand / Size / Color / Condition</div><div class="plat-field-val">${esc(d.brand)} · ${esc(d.size)} · ${esc(d.color)} · ${esc(d.condition)}</div></div>
+    <div class="plat-field"><div class="plat-field-label">Description</div><div class="plat-field-val">${esc(d.description)}</div></div>
+    ${d.hashtags ? `<div class="plat-field"><div class="plat-field-label">Hashtags</div><div class="plat-field-val" style="color:var(--amber)">${esc(d.hashtags)}</div></div>` : ''}
   </div></div>`;
 }
 function saveToInventory(body, results) {
@@ -1784,7 +1789,12 @@ async function publish() {
     const images_b64 = [];
     for (const f of files) {
       const buf = await f.arrayBuffer();
-      images_b64.push(btoa(String.fromCharCode(...new Uint8Array(buf))));
+      const bytes = new Uint8Array(buf);
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 8192) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+      }
+      images_b64.push(btoa(binary));
     }
     const policies = JSON.parse(localStorage.getItem('apoc2_policies') || '{}');
     const body = {
